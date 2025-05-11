@@ -443,9 +443,12 @@ const Analytics: React.FC = () => {
               </div>
             ))}
           </div>
-          <div className="flex-1 h-full ml-1">
+          <div className="flex-1 h-full ml-1 overflow-x-auto">
             {trendData.length > 0 ? (
-              <div className="flex h-full items-end justify-between">
+              <div className="flex h-full items-end justify-between" 
+                style={{ 
+                  minWidth: trendData.length > 15 ? `${trendData.length * 18}px` : '100%' 
+                }}>
                 {trendData.map((day, index) => {
                   // 高さ計算をシンプルに修正
                   const newUserHeight = Math.max(4, (day.newUsers / activeUsersTopValue) * 100);
@@ -506,7 +509,9 @@ const Analytics: React.FC = () => {
                         />
                       </div>
                       
-                      <div className="text-xs text-gray-500 mt-1.5 truncate text-center px-0.5 w-full" title={day.label}>
+                      <div className="text-xs text-gray-500 mt-1.5 truncate text-center px-0.5 w-full" 
+                        style={{ maxWidth: `${Math.max(barWidth, 24)}px` }}
+                        title={day.label}>
                         {day.label}
                       </div>
                     </div>
@@ -519,6 +524,23 @@ const Analytics: React.FC = () => {
               </div>
             )}
           </div>
+        </div>
+        
+        {/* グラフ期間切替ボタン - モバイル向け */}
+        <div className="mt-4 mb-2 pt-2 border-t border-gray-200 flex flex-wrap justify-center gap-1 md:hidden">
+          {timeRangeOptions.slice(2, 5).map(option => (
+            <button
+              key={option.value}
+              onClick={() => setTimeRange(option.value)}
+              className={`text-xs px-2 py-1 rounded ${
+                timeRange === option.value 
+                ? 'bg-primary-500 text-white' 
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
         </div>
         
         {/* グラフ用スタイル */}

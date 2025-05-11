@@ -53,6 +53,9 @@ const ProfilePage: React.FC = () => {
   const [showPlanChangeConfirm, setShowPlanChangeConfirm] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<PlanType | null>(null);
   
+  // ログアウト確認ダイアログの状態
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  
   // 管理者かどうかを判定
   const isAdmin = () => currentUser?.role === 'admin';
   
@@ -174,6 +177,17 @@ const ProfilePage: React.FC = () => {
       default:
         return '';
     }
+  };
+  
+  // ログアウト処理
+  const handleLogout = () => {
+    setShowLogoutConfirm(true);
+  };
+  
+  // ログアウトを確認した場合の処理
+  const confirmLogout = () => {
+    logout();
+    navigate('/login');
   };
   
   // プロフィールタブのコンテンツ
@@ -518,10 +532,7 @@ const ProfilePage: React.FC = () => {
               
               <button
                 className="flex items-center w-full px-3 py-2 text-left rounded-md text-red-600 hover:bg-red-50"
-                onClick={() => {
-                  logout();
-                  navigate('/login');
-                }}
+                onClick={handleLogout}
               >
                 <LogOut size={18} className="mr-2" />
                 ログアウト
@@ -569,6 +580,17 @@ const ProfilePage: React.FC = () => {
         title="プラン変更"
         message={selectedPlan ? `プランを${currentPlan}から${selectedPlan}に変更します。月額料金は${getPlanPrice(selectedPlan)}/月になります。よろしいですか？` : ''}
         confirmText="変更する"
+        cancelText="キャンセル"
+      />
+
+      {/* ログアウト確認ダイアログ */}
+      <ConfirmDialog
+        isOpen={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        onConfirm={confirmLogout}
+        title="ログアウト"
+        message="ログアウトしてもよろしいですか？"
+        confirmText="ログアウト"
         cancelText="キャンセル"
       />
     </div>

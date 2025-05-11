@@ -13,6 +13,7 @@ interface SelectProps extends Omit<React.SelectHTMLAttributes<HTMLSelectElement>
   helperText?: string;
   options: SelectOption[];
   onChange?: (value: string) => void;
+  dropdownPosition?: 'auto' | 'top' | 'bottom';
 }
 
 const Select: React.FC<SelectProps> = ({
@@ -24,7 +25,8 @@ const Select: React.FC<SelectProps> = ({
   onChange,
   className = '',
   disabled,
-  value
+  value,
+  dropdownPosition = 'auto'
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -52,22 +54,49 @@ const Select: React.FC<SelectProps> = ({
     const rect = containerRef.current.getBoundingClientRect();
     const viewportHeight = window.innerHeight;
     const bottomSpace = viewportHeight - rect.bottom;
-    const dropdownHeight = options.length * 36; // 各オプションの高さを約36pxと仮定
+    const dropdownHeight = Math.min(options.length * 36, 250); // 各オプションの高さを約36pxと仮定、最大高さ制限
     
-    // 下部のスペースが不足している場合は上部に表示
+    // 表示方向の強制指定がある場合
+    if (dropdownPosition === 'top') {
+      return {
+        width: containerRef.current.offsetWidth + 'px',
+        left: '0',
+        bottom: '100%',
+        marginBottom: '2px',
+        maxHeight: '250px',
+        overflow: 'auto'
+      };
+    } else if (dropdownPosition === 'bottom') {
+      return {
+        width: containerRef.current.offsetWidth + 'px',
+        left: '0',
+        top: '100%',
+        marginTop: '2px',
+        maxHeight: '250px',
+        overflow: 'auto'
+      };
+    }
+    
+    // auto: 下部のスペースが不足している場合は上部に表示
     if (bottomSpace < dropdownHeight && rect.top > dropdownHeight) {
       return {
         width: containerRef.current.offsetWidth + 'px',
-        left: rect.left + 'px',
-        bottom: (viewportHeight - rect.top) + 2 + 'px',
+        left: '0',
+        bottom: '100%',
+        marginBottom: '2px',
+        maxHeight: '250px',
+        overflow: 'auto'
       };
     }
     
     // デフォルトは下部に表示
     return {
       width: containerRef.current.offsetWidth + 'px',
-      left: rect.left + 'px',
-      top: rect.bottom + 2 + 'px',
+      left: '0',
+      top: '100%',
+      marginTop: '2px',
+      maxHeight: '250px',
+      overflow: 'auto'
     };
   };
 
@@ -91,7 +120,7 @@ const Select: React.FC<SelectProps> = ({
           <ChevronDown size={18} className="text-gray-500" />
         </div>
         {isOpen && (
-          <ul className="fixed z-50 bg-white border border-gray-200 rounded-md shadow-xl" style={getDropdownPosition()}>
+          <ul className="absolute z-50 bg-white border border-gray-200 rounded-md shadow-xl" style={getDropdownPosition()}>
             {options.map(opt => (
               <li
                 key={opt.value}

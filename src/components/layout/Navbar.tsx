@@ -1,7 +1,8 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Menu, LogOut, User, Settings } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
+import ConfirmDialog from '../ui/ConfirmDialog';
 
 interface NavbarProps {
   isMobileMenuOpen: boolean;
@@ -13,6 +14,7 @@ const Navbar: React.FC<NavbarProps> = ({ isMobileMenuOpen, toggleMobileMenu }) =
   const navigate = useNavigate();
   const [isProfileMenuOpen, setIsProfileMenuOpen] = React.useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -29,6 +31,11 @@ const Navbar: React.FC<NavbarProps> = ({ isMobileMenuOpen, toggleMobileMenu }) =
   }, [isProfileMenuOpen]);
 
   const handleLogout = () => {
+    setShowLogoutConfirm(true);
+    setIsProfileMenuOpen(false);
+  };
+  
+  const confirmLogout = () => {
     logout();
     navigate('/login');
   };
@@ -85,6 +92,17 @@ const Navbar: React.FC<NavbarProps> = ({ isMobileMenuOpen, toggleMobileMenu }) =
           </div>
         </div>
       </div>
+      
+      {/* ログアウト確認ダイアログ */}
+      <ConfirmDialog
+        isOpen={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        onConfirm={confirmLogout}
+        title="ログアウト"
+        message="ログアウトしてもよろしいですか？"
+        confirmText="ログアウト"
+        cancelText="キャンセル"
+      />
     </nav>
   );
 };

@@ -908,7 +908,7 @@ const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
           />
         </div>
 
-        <div className="sticky-footer nav-buttons mt-4 border-t pt-4">
+        <div className="sticky-footer nav-buttons mt-4 border-t pt-4 flex flex-wrap gap-2">
           <Button
             variant="outline"
             leftIcon={<ArrowLeft size={16} />}
@@ -925,20 +925,21 @@ const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
             leftIcon={<Save size={16} />}
             onClick={handleSaveProgress}
             disabled={isLoading || isGenerating}
-            className="ml-2"
+            className="ml-0 sm:ml-2"
           >
             保存
           </Button>
 
           {/* 最後の質問の場合は生成ボタンとモデル選択、それ以外は次へボタンを表示 */}
           {isLastQuestion ? (
-            <div className="flex items-center ml-auto gap-2">
-              <div className="w-48">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center w-full sm:w-auto sm:ml-auto gap-2 mt-2 sm:mt-0">
+              <div className="w-full sm:w-48 mb-2 sm:mb-0">
                 <Select
                   options={modelOptions}
                   value={selectedModel}
                   onChange={setSelectedModel}
                   helperText=""
+                  dropdownPosition="top"
                 />
               </div>
               <Button
@@ -947,7 +948,7 @@ const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
                 onClick={handleGenerateContent}
                 disabled={isGenerating}
                 isLoading={isGenerating}
-                className="min-w-32 important-button"
+                className="min-w-32 important-button w-full sm:w-auto"
               >
                 {isGenerating ? 'LP記事を生成中...' : 'LP記事を生成'}
               </Button>
@@ -958,7 +959,7 @@ const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
               rightIcon={<ArrowRight size={20} className="stroke-gray-800 stroke-2" />}
               onClick={handleNext}
               disabled={isLoading}
-              className="next-button important-button ml-auto"
+              className="next-button important-button w-full sm:w-auto sm:ml-auto mt-2 sm:mt-0"
             >
               次へ
             </Button>
