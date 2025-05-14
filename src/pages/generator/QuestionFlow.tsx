@@ -499,7 +499,9 @@ const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
     // 保存リスト画面に遷移（少し遅延させる）
     setTimeout(() => {
       setShowSuccessMessage(false);
-      setRedirectToSaved(true);
+      // 保存データタブが選択された状態で遷移
+      localStorage.setItem('lp_navigator_history_tab', 'saved');
+      navigate('/generator/history', { replace: true });
     }, 1000);
   };
 

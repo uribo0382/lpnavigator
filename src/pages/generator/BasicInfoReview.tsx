@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, CheckCircle, FileText, AlertCircle } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
-import Select from '../../components/ui/Select';
 
 interface BasicInfoReviewProps {
   answers: Record<string, string>;
@@ -124,26 +123,15 @@ const BasicInfoReview: React.FC<BasicInfoReviewProps> = ({
           入力画面に戻る
         </Button>
         
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center w-full sm:w-auto gap-4 sm:gap-2">
-          <div className="w-full sm:w-48">
-            <Select
-              options={modelOptions}
-              value={selectedModel}
-              onChange={setSelectedModel}
-              helperText=""
-              dropdownPosition="top"
-            />
-          </div>
-          <Button
-            variant="primary"
-            leftIcon={<FileText size={16} />}
-            onClick={onConfirm}
-            disabled={!requiredAnswersComplete}
-            className="w-full sm:w-auto"
-          >
-            基本情報を生成
-          </Button>
-        </div>
+        <Button
+          variant="primary"
+          leftIcon={<FileText size={16} />}
+          onClick={onConfirm}
+          disabled={!requiredAnswersComplete}
+          className="w-full sm:w-auto"
+        >
+          基本情報を生成
+        </Button>
       </div>
     </div>
   );

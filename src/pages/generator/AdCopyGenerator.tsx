@@ -106,11 +106,74 @@ const AdCopyGenerator: React.FC = () => {
         // 常にダミーデータを追加して、選択できるものが必ずあるようにする
         basicInfoItems.push({
           id: 'dummy-1',
-          title: 'AIを活用したコンテンツ作成ツール',
-          content: 'AIを活用したコンテンツ作成ツールの基本情報です。高度な自然言語処理機能を使用して、高品質なコンテンツを簡単に作成できます。',
-          metaDescription: 'AIを活用したコンテンツ作成ツールで、効率的に高品質な記事を生成しましょう。',
-          permalink: 'ai-content-tool',
-          createdAt: new Date()
+          title: 'クラウド会計ソフトウェア基本情報',
+          content: `株式会社FinTechソリューションズが提供するクラウド会計ソフトウェア「SmartAccounts」に関する基本情報です。
+
+【商品・サービスの概要】
+SmartAccountsは、中小企業向けのクラウド型会計ソフトウェアで、請求書発行から経費管理、決算書作成まで一気通貫で対応します。インターネット環境があればいつでもどこでも利用可能で、モバイルアプリにも対応しています。
+
+【主な特徴】
+- AI搭載のレシート読取機能で経費精算の手間を90%削減
+- 銀行口座やクレジットカードと自動連携し、取引データを自動取得
+- 税務申告に必要な書類を自動生成し、電子申告にも対応
+
+【想定されるお客様】
+従業員50名以下の中小企業、個人事業主、フリーランス。特に、経理担当者が少ない、または経理業務の効率化を図りたい企業に最適です。
+
+【解決できる課題】
+経理業務の属人化、手作業による記帳ミス、確定申告時の書類作成負担、リモートワーク時の経理業務遅延などの課題を解決します。
+
+【提供価値】
+経理業務の時間を最大70%削減し、本業に集中できる環境を提供します。また、リアルタイムの経営状況の可視化により、的確な経営判断をサポートします。`,
+          metaDescription: '中小企業向けクラウド会計ソフトウェアの特徴と導入メリットについての基本情報です。',
+          permalink: 'cloud-accounting-software-info',
+          createdAt: new Date(2023, 5, 10)
+        });
+
+        basicInfoItems.push({
+          id: 'dummy-2',
+          title: 'オーガニック食品宅配サービス基本情報',
+          content: `株式会社グリーンテーブルが提供する「オーガニックライフ」に関する基本情報です。
+
+【商品・サービスの概要】
+オーガニックライフは、全国の厳選された有機栽培農家から直接仕入れた新鮮な野菜や果物、加工食品を定期的にご自宅にお届けする宅配サービスです。すべての食材は有機JAS認証を取得しており、安心・安全な食生活をサポートします。
+
+【主な特徴】
+- 契約農家から直送される完全無農薬・有機栽培の新鮮野菜
+- 旬の食材を活かしたレシピ提案とミールキット同梱オプション
+- 食材の生産者情報と栽培方法の完全開示による透明性
+
+【想定されるお客様】
+健康や食の安全性に関心の高い30〜50代の家族世帯、特に小さなお子様がいるご家庭や、食材の品質にこだわる方々。また、忙しくてスーパーに買い物に行く時間がない共働き世帯にも最適です。
+
+【解決できる課題】
+市販の食品に含まれる農薬や添加物への不安、忙しい日常での食材調達の時間的負担、食材の産地や栽培方法の不透明さなどの課題を解決します。`,
+          metaDescription: '無農薬・有機栽培の新鮮食材を定期宅配するサービスについての基本情報です。',
+          permalink: 'organic-food-delivery-info',
+          createdAt: new Date(2023, 5, 15)
+        });
+
+        basicInfoItems.push({
+          id: 'dummy-3',
+          title: 'オンラインヨガスタジオ基本情報',
+          content: `YogaLifeStudioが提供する「どこでもヨガ」に関する基本情報です。
+
+【商品・サービスの概要】
+どこでもヨガは、自宅や外出先から参加できるオンラインヨガスタジオです。ライブクラスとオンデマンドレッスンを組み合わせたハイブリッド型で、場所や時間を選ばずに本格的なヨガレッスンを受講できます。初心者から上級者まで、様々なレベルやスタイルのクラスを提供しています。
+
+【主な特徴】
+- 一流インストラクターによるライブクラスを毎日20本以上配信
+- 500本以上のレッスン動画がいつでも視聴可能なオンデマンドライブラリ
+- インストラクターからリアルタイムでポーズの修正やアドバイスが受けられる双方向コミュニケーション
+
+【想定されるお客様】
+忙しい仕事や育児でスタジオに通う時間がない方、自宅で気軽にヨガを始めたい初心者、対面レッスンに抵抗がある方、地方在住でヨガスタジオへのアクセスが限られている方など。年齢層は20代から60代まで幅広く対応。
+
+【解決できる課題】
+スタジオまでの移動時間や固定スケジュールの制約、初心者の対面レッスンへの心理的ハードル、地方在住者のヨガ教室へのアクセス制限、コロナ禍における運動不足などの課題を解決します。`,
+          metaDescription: '自宅で気軽に参加できるライブ配信・オンデマンドのヨガレッスンサービスについての基本情報です。',
+          permalink: 'online-yoga-studio-info',
+          createdAt: new Date(2023, 5, 20)
         });
         
         setBasicInfoList(basicInfoItems);
@@ -494,17 +557,18 @@ const AdCopyGenerator: React.FC = () => {
       </div>
 
       {isGenerating ? (
-        <Card className="p-4 md:p-6">
-          <div className="py-6">
-            <div className="flex flex-col items-center justify-center">
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-50">
+          <div className="bg-gray-800 p-8 rounded-xl shadow-2xl max-w-md w-full border border-gray-700">
+            <div className="text-center relative">
+              {/* メインアニメーション部分 */}
               <div className="relative mb-6 mx-auto w-28 h-28">
                 {/* 背景のグラデーションサークル */}
                 <div className="absolute inset-0 rounded-full animate-gradient opacity-20" style={{ filter: 'blur(10px)' }}></div>
                 
                 {/* アイコンを回転させるアニメーション */}
-                <Megaphone 
+                <FileText 
                   size={112} 
-                  className="absolute inset-0 text-primary-400 z-10"
+                  className="absolute inset-0 text-primary-400 z-10 ai-icon-float"
                   style={{
                     animation: 'pulse 2s infinite ease-in-out, spin 8s linear infinite',
                     filter: 'drop-shadow(0 0 8px rgba(96, 165, 250, 0.7))'
@@ -519,7 +583,7 @@ const AdCopyGenerator: React.FC = () => {
                       className="absolute w-3 h-3 bg-blue-400 rounded-full"
                       style={{
                         transform: `rotate(${i * 45}deg) translateY(-35px)`,
-                        animation: `orbitSpin 3s infinite ease-in-out ${i * 0.2}s`,
+                        animation: `orbitSpin3D 3s infinite ease-in-out ${i * 0.2}s`,
                         boxShadow: '0 0 8px rgba(96, 165, 250, 0.7)'
                       }}
                     />
@@ -534,42 +598,67 @@ const AdCopyGenerator: React.FC = () => {
                       className="absolute w-2 h-2 bg-green-400 rounded-full"
                       style={{
                         transform: `rotate(${i * 30}deg) translateY(-50px)`,
-                        animation: `orbitSpin 6s infinite ease-in-out ${i * 0.1}s`,
+                        animation: `orbitSpin3D 6s infinite ease-in-out ${i * 0.1}s`,
                         boxShadow: '0 0 6px rgba(74, 222, 128, 0.7)'
                       }}
                     />
                   ))}
                 </div>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">広告文を生成中...</h3>
-              <p className="text-sm text-gray-500 text-center max-w-md mb-4">
-                AIが高度なアルゴリズムを駆使して最適な広告文を生成しています。
-                このプロセスには数秒かかることがあります。
-              </p>
-              <div className="w-full max-w-md mb-2 bg-gray-200 rounded-full h-2.5">
-                <div 
-                  className="bg-primary-600 h-2.5 rounded-full progress-bar-flash" 
-                  style={{ width: `${progressPercent}%`, transition: 'width 0.3s ease' }}
-                ></div>
-              </div>
-              <div className="flex justify-between w-full max-w-md">
-                <div className="text-xs text-gray-400">{progressPercent}%</div>
-                <div className="text-xs text-gray-400">AIプロセス実行中</div>
+              
+              {/* 「生成中」テキスト - センターに大きく表示 */}
+              <div className="mb-8 appear-from-bottom">
+                <div className="animate-text-pulse mb-3">
+                  <span className="text-2xl font-bold text-transparent bg-clip-text animate-gradient">
+                    広告文を生成中
+                  </span>
+                  <span className="dots-container inline-flex ml-1">
+                    <span className="dot text-2xl text-primary-400">.</span>
+                    <span className="dot text-2xl text-primary-400">.</span>
+                    <span className="dot text-2xl text-primary-400">.</span>
+                  </span>
+                </div>
+                <p className="text-gray-400 text-sm mb-2">
+                  AIが高度なアルゴリズムを駆使して最適な広告文を生成しています
+                </p>
               </div>
               
-              {/* 処理内容を示唆するテキスト */}
-              <div className="mt-4 text-left bg-gray-900 p-2 rounded text-xs font-mono text-gray-400 h-12 overflow-hidden w-full max-w-md">
-                <div className="scroll-up">
+              {/* プログレスバー */}
+              <div className="relative pt-1">
+                <div className="flex mb-2 items-center justify-between">
+                  <div className="text-xs text-gray-400">
+                    {progressPercent}%
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    AIプロセス実行中
+                  </div>
+                </div>
+                <div className="overflow-hidden h-2 mb-2 text-xs flex rounded-full bg-gray-700">
+                  <div 
+                    className="animate-gradient progress-bar-flash h-full rounded-full"
+                    style={{ 
+                      width: `${progressPercent}%`,
+                      transition: 'width 0.3s ease'
+                    }}
+                  ></div>
+                </div>
+              </div>
+              
+              {/* 処理内容を示唆するテキスト - コンピュータっぽい演出 */}
+              <div className="mt-4 text-left bg-gray-900 p-2 rounded text-xs font-mono text-gray-400 h-12 overflow-hidden">
+                <div className="terminal-scroll">
                   <p>&gt; 情報収集完了</p>
                   <p>&gt; テンプレート選択中...</p>
                   <p>&gt; コンテンツ最適化実行中...</p>
                   <p>&gt; ユーザー目的分析中...</p>
                   <p>&gt; 広告文生成処理中...</p>
+                  <p>&gt; データ整形中...</p>
+                  <p>&gt; 最終調整中...</p>
                 </div>
               </div>
             </div>
           </div>
-        </Card>
+        </div>
       ) : generatedAdCopies.length > 0 ? (
         <div className="space-y-6">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">

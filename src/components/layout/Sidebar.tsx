@@ -156,7 +156,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onCloseMobileMenu, isSidebarCollapsed
 
   return (
     <aside className="bg-white h-full flex flex-col">
-      <div className="flex items-center justify-between h-16 border-b border-gray-200 px-4">
+      <div className="flex items-center justify-between h-16 px-4">
         {!isSidebarCollapsed ? (
           <h2 className="text-lg font-bold text-primary-600 flex items-center">LPナビゲーター</h2>
         ) : (

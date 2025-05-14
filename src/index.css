@@ -351,6 +351,42 @@ button svg {
   100% { transform: rotate(360deg) translateY(-35px); opacity: 0; }
 }
 
+/* 拡張版軌道アニメーション - よりスムーズで3D効果あり */
+@keyframes orbitSpin3D {
+  0% { 
+    transform: rotate(0deg) translateY(-35px) scale(0.8); 
+    opacity: 0.2;
+    box-shadow: 0 0 2px rgba(96, 165, 250, 0.3);
+  }
+  25% { 
+    transform: rotate(90deg) translateY(-35px) scale(1.1); 
+    opacity: 1;
+    box-shadow: 0 0 12px rgba(96, 165, 250, 0.8);
+  }
+  50% { 
+    transform: rotate(180deg) translateY(-35px) scale(0.9); 
+    opacity: 0.8;
+    box-shadow: 0 0 8px rgba(96, 165, 250, 0.6);
+  }
+  75% { 
+    transform: rotate(270deg) translateY(-35px) scale(1.2); 
+    opacity: 1;
+    box-shadow: 0 0 15px rgba(96, 165, 250, 0.9);
+  }
+  100% { 
+    transform: rotate(360deg) translateY(-35px) scale(0.8); 
+    opacity: 0.2;
+    box-shadow: 0 0 2px rgba(96, 165, 250, 0.3);
+  }
+}
+
+/* グローエフェクト */
+@keyframes glow {
+  0% { filter: drop-shadow(0 0 2px rgba(96, 165, 250, 0.7)); opacity: 0.7; }
+  50% { filter: drop-shadow(0 0 15px rgba(96, 165, 250, 1)); opacity: 1; }
+  100% { filter: drop-shadow(0 0 2px rgba(96, 165, 250, 0.7)); opacity: 0.7; }
+}
+
 /* スクロールアップアニメーション */
 .scroll-up {
   animation: scrollUp 6s linear infinite;
@@ -359,6 +395,82 @@ button svg {
 @keyframes scrollUp {
   0% { transform: translateY(0); }
   100% { transform: translateY(-120px); }
+}
+
+/* 拡張版スクロールアップ - タイピング効果とフェードイン */
+.terminal-scroll {
+  animation: terminalScroll 8s linear infinite;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+@keyframes terminalScroll {
+  0% { transform: translateY(0); opacity: 0; }
+  10% { transform: translateY(0); opacity: 1; }
+  25% { transform: translateY(-24px); opacity: 1; }
+  40% { transform: translateY(-48px); opacity: 1; }
+  55% { transform: translateY(-72px); opacity: 1; }
+  70% { transform: translateY(-96px); opacity: 1; }
+  85% { transform: translateY(-120px); opacity: 1; }
+  100% { transform: translateY(-144px); opacity: 0; }
+}
+
+.typing-effect {
+  overflow: hidden;
+  white-space: nowrap;
+  border-right: 2px solid var(--color-primary-400);
+  animation: typing 3.5s steps(40, end), blink-caret 0.75s step-end infinite;
+}
+
+@keyframes typing {
+  from { width: 0 }
+  to { width: 100% }
+}
+
+@keyframes blink-caret {
+  from, to { border-color: transparent }
+  50% { border-color: var(--color-primary-400) }
+}
+
+/* AIアイコンのパルスとフロートアニメーション */
+.ai-icon-float {
+  animation: float 3s ease-in-out infinite, glow 2s ease-in-out infinite;
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+/* 生成処理のホログラム効果 */
+.hologram-effect {
+  position: relative;
+  overflow: hidden;
+}
+
+.hologram-effect::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(96, 165, 250, 0.1),
+    rgba(96, 165, 250, 0.2),
+    rgba(96, 165, 250, 0.1),
+    transparent
+  );
+  transform: rotate(30deg);
+  animation: hologramScan 3s linear infinite;
+}
+
+@keyframes hologramScan {
+  0% { transform: translateX(-100%) rotate(30deg); }
+  100% { transform: translateX(100%) rotate(30deg); }
 }
 
 /* プログレスバーのフラッシュ効果 */

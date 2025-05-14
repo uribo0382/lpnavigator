@@ -399,19 +399,25 @@ const LpArticleGenerator: React.FC = () => {
       </div>
       
       {isGenerating ? (
-        <Card className="p-4 md:p-6">
-          <div className="py-6">
-            <div className="flex flex-col items-center justify-center">
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-50">
+          <div className="bg-gray-800 p-8 rounded-xl shadow-2xl max-w-md w-full border border-gray-700">
+            <div className="text-center relative">
+              {/* メインアニメーション部分 */}
               <div className="relative mb-6 mx-auto w-28 h-28">
+                {/* 背景のグラデーションサークル */}
                 <div className="absolute inset-0 rounded-full animate-gradient opacity-20" style={{ filter: 'blur(10px)' }}></div>
-                <FileEdit
+                
+                {/* アイコンを回転させるアニメーション */}
+                <FileEdit 
                   size={112} 
-                  className="absolute inset-0 text-primary-400 z-10"
+                  className="absolute inset-0 text-primary-400 z-10 ai-icon-float"
                   style={{
                     animation: 'pulse 2s infinite ease-in-out, spin 8s linear infinite',
                     filter: 'drop-shadow(0 0 8px rgba(96, 165, 250, 0.7))'
                   }}
                 />
+                
+                {/* 内側を回る軌道の小さな円 */}
                 <div className="absolute inset-0">
                   {[...Array(8)].map((_, i) => (
                     <div 
@@ -419,12 +425,14 @@ const LpArticleGenerator: React.FC = () => {
                       className="absolute w-3 h-3 bg-blue-400 rounded-full"
                       style={{
                         transform: `rotate(${i * 45}deg) translateY(-35px)`,
-                        animation: `orbitSpin 3s infinite ease-in-out ${i * 0.2}s`,
+                        animation: `orbitSpin3D 3s infinite ease-in-out ${i * 0.2}s`,
                         boxShadow: '0 0 8px rgba(96, 165, 250, 0.7)'
                       }}
                     />
                   ))}
                 </div>
+                
+                {/* 外側を回る軌道の小さな円 */}
                 <div className="absolute inset-0">
                   {[...Array(12)].map((_, i) => (
                     <div 
@@ -432,40 +440,67 @@ const LpArticleGenerator: React.FC = () => {
                       className="absolute w-2 h-2 bg-green-400 rounded-full"
                       style={{
                         transform: `rotate(${i * 30}deg) translateY(-50px)`,
-                        animation: `orbitSpin 6s infinite ease-in-out ${i * 0.1}s`,
+                        animation: `orbitSpin3D 6s infinite ease-in-out ${i * 0.1}s`,
                         boxShadow: '0 0 6px rgba(74, 222, 128, 0.7)'
                       }}
                     />
                   ))}
                 </div>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">LP記事を生成中...</h3>
-              <p className="text-sm text-gray-500 text-center max-w-md mb-4">
-                AIが高度なアルゴリズムを駆使して最適なLP記事を生成しています。
-                このプロセスには数秒かかることがあります。
-              </p>
-              <div className="w-full max-w-md mb-2 bg-gray-200 rounded-full h-2.5">
-                <div 
-                  className="bg-primary-600 h-2.5 rounded-full progress-bar-flash" 
-                  style={{ width: `${progressPercent}%`, transition: 'width 0.3s ease' }}
-                ></div>
+              
+              {/* 「生成中」テキスト - センターに大きく表示 */}
+              <div className="mb-8 appear-from-bottom">
+                <div className="animate-text-pulse mb-3">
+                  <span className="text-2xl font-bold text-transparent bg-clip-text animate-gradient">
+                    LP記事を生成中
+                  </span>
+                  <span className="dots-container inline-flex ml-1">
+                    <span className="dot text-2xl text-primary-400">.</span>
+                    <span className="dot text-2xl text-primary-400">.</span>
+                    <span className="dot text-2xl text-primary-400">.</span>
+                  </span>
+                </div>
+                <p className="text-gray-400 text-sm mb-2">
+                  AIが高度なアルゴリズムを駆使して最適なLP記事を生成しています
+                </p>
               </div>
-              <div className="flex justify-between w-full max-w-md">
-                <div className="text-xs text-gray-400">{progressPercent}%</div>
-                <div className="text-xs text-gray-400">AIプロセス実行中</div>
+              
+              {/* プログレスバー */}
+              <div className="relative pt-1">
+                <div className="flex mb-2 items-center justify-between">
+                  <div className="text-xs text-gray-400">
+                    {progressPercent}%
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    AIプロセス実行中
+                  </div>
+                </div>
+                <div className="overflow-hidden h-2 mb-2 text-xs flex rounded-full bg-gray-700">
+                  <div 
+                    className="animate-gradient progress-bar-flash h-full rounded-full"
+                    style={{ 
+                      width: `${progressPercent}%`,
+                      transition: 'width 0.3s ease'
+                    }}
+                  ></div>
+                </div>
               </div>
-              <div className="mt-4 text-left bg-gray-900 p-2 rounded text-xs font-mono text-gray-400 h-12 overflow-hidden w-full max-w-md">
-                <div className="scroll-up">
+              
+              {/* 処理内容を示唆するテキスト - コンピュータっぽい演出 */}
+              <div className="mt-4 text-left bg-gray-900 p-2 rounded text-xs font-mono text-gray-400 h-12 overflow-hidden">
+                <div className="terminal-scroll">
                   <p>&gt; 情報収集完了</p>
                   <p>&gt; テンプレート選択中...</p>
                   <p>&gt; コンテンツ最適化実行中...</p>
-                  <p>&gt; ユーザー目的分析中...</p>
+                  <p>&gt; LP記事構成分析中...</p>
                   <p>&gt; LP記事生成処理中...</p>
+                  <p>&gt; データ整形中...</p>
+                  <p>&gt; 最終調整中...</p>
                 </div>
               </div>
             </div>
           </div>
-        </Card>
+        </div>
       ) : generatedLpArticles.length > 0 && (
         <div className="space-y-6">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
@@ -523,7 +558,7 @@ const LpArticleGenerator: React.FC = () => {
                         <div>
                           <div className="font-medium text-gray-700 mb-2">LP記事内容:</div>
                           <div className="border p-4 rounded-md bg-gray-50 whitespace-pre-wrap h-[300px] overflow-auto">
-                            <div dangerouslySetInnerHTML={{ __html: lpArticle.content }} />
+                            {lpArticle.content}
                           </div>
                         </div>
                       </div>
