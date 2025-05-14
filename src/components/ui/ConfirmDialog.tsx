@@ -10,8 +10,8 @@ interface ConfirmDialogProps {
   onCancel?: () => void;
   title?: string;
   message: string;
-  confirmText?: string;
-  cancelText?: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
 }
 
 const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
@@ -21,8 +21,8 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   onCancel,
   title,
   message,
-  confirmText = 'OK',
-  cancelText = 'キャンセル',
+  confirmLabel = 'OK',
+  cancelLabel = 'キャンセル',
 }) => {
   // 確認ボタンのハンドラ
   const handleConfirm = () => {
@@ -48,21 +48,19 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           {title && <h3 className="text-xl font-bold text-gray-800 mb-2">{title}</h3>}
           <p className="text-gray-700 mb-6">{message}</p>
           <div className="flex justify-center space-x-4">
-            {onCancel && (
-              <Button
-                variant="outline"
-                onClick={handleCancel}
-                className="min-w-32"
-              >
-                {cancelText}
-              </Button>
-            )}
+            <Button
+              variant="outline"
+              onClick={handleCancel}
+              className="min-w-32"
+            >
+              {cancelLabel}
+            </Button>
             <Button
               variant="primary"
               onClick={handleConfirm}
               className="min-w-32"
             >
-              {confirmText}
+              {confirmLabel}
             </Button>
           </div>
         </div>

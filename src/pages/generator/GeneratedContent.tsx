@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Copy, Download, Pencil, FileText, ListChecks, Check, RefreshCw, Edit, Save } from 'lucide-react';
+import { ArrowLeft, Copy, Pencil, ListChecks, Check, RefreshCw, Edit, Save } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 
@@ -163,7 +163,7 @@ const GeneratedContent: React.FC<GeneratedContentProps> = (props) => {
     <div className="space-y-6">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center">
-          <h1 className="text-2xl font-bold text-gray-800">生成されたLP記事</h1>
+          <h1 className="text-2xl font-bold text-gray-800">基本情報詳細</h1>
         </div>
         <div className="flex space-x-2">
           <Button
@@ -180,160 +180,80 @@ const GeneratedContent: React.FC<GeneratedContentProps> = (props) => {
           >
             履歴を表示
           </Button>
-          <Button
-            leftIcon={<Pencil size={16} />}
-            onClick={handleNewContent}
-          >
-            新規作成
-          </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <Card className="h-full p-0 overflow-hidden">
-            <div className="relative h-full">
-              {isEditMode ? (
-                <div
-                  ref={editorRef}
-                  className="content-wrapper w-full h-full bg-white overflow-auto p-6 pb-16"
-                  contentEditable
-                  style={{ minHeight: '600px', caretColor: 'var(--color-gray-800)' }}
-                />
-              ) : (
-                <div 
-                  className="content-wrapper w-full h-full bg-white overflow-auto p-6 pb-16"
-                  dangerouslySetInnerHTML={{ __html: content.content }}
-                  style={{ minHeight: '600px' }}
-                />
-              )}
-              
-              <div className="absolute bottom-0 left-0 right-0 flex justify-start items-center bg-gray-50 p-3 border-t border-gray-200">
-                <div className="flex space-x-3">
-                  <button 
-                    className="flex items-center px-3 py-2 rounded-md bg-white hover:bg-gray-100 transition-colors border border-gray-200 text-gray-700 shadow-sm"
-                    onClick={() => handleCopy(isEditMode ? content.content : content.content, 'content')}
-                    title="テキストをコピー"
-                  >
-                    {copied === 'content' ? (
-                      <>
-                        <Check size={16} className="mr-1" />
-                        <span className="text-sm font-medium">コピー済み</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy size={16} className="mr-1" />
-                        <span className="text-sm font-medium">コピー</span>
-                      </>
-                    )}
-                  </button>
-                  <button 
-                    className="flex items-center px-3 py-2 rounded-md shadow-sm hover:bg-gray-100 transition-colors border border-gray-200 bg-white text-gray-700"
-                    onClick={() => {
-                      if (isEditMode) {
-                        handleSaveContent();
-                      } else {
-                        setIsEditMode(true);
-                      }
-                    }}
-                    title={isEditMode ? '変更を保存' : '編集モード'}
-                  >
-                    {isEditMode ? (
-                      <>
-                        <Save size={16} className="mr-1" />
-                        <span className="text-sm font-medium">保存</span>
-                      </>
-                    ) : (
-                      <>
-                        <Edit size={16} className="mr-1" />
-                        <span className="text-sm font-medium">編集</span>
-                      </>
-                    )}
-                  </button>
-                </div>
+      <div className="grid grid-cols-1">
+        <Card className="h-full p-0 overflow-hidden">
+          <div className="relative h-full">
+            {isEditMode ? (
+              <div
+                ref={editorRef}
+                className="content-wrapper w-full h-full bg-white overflow-auto p-6 pb-16"
+                contentEditable
+                style={{ minHeight: '600px', caretColor: 'var(--color-gray-800)' }}
+              />
+            ) : (
+              <div 
+                className="content-wrapper w-full h-full bg-white overflow-auto p-6 pb-16"
+                dangerouslySetInnerHTML={{ __html: content.content }}
+                style={{ minHeight: '600px' }}
+              />
+            )}
+            
+            <div className="absolute bottom-0 left-0 right-0 flex justify-start items-center bg-gray-50 p-3 border-t border-gray-200">
+              <div className="flex space-x-3">
+                <button 
+                  className="flex items-center px-3 py-2 rounded-md bg-white hover:bg-gray-100 transition-colors border border-gray-200 text-gray-700 shadow-sm"
+                  onClick={() => handleCopy(isEditMode ? content.content : content.content, 'content')}
+                  title="テキストをコピー"
+                >
+                  {copied === 'content' ? (
+                    <>
+                      <Check size={16} className="mr-1" />
+                      <span className="text-sm font-medium">コピー済み</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={16} className="mr-1" />
+                      <span className="text-sm font-medium">コピー</span>
+                    </>
+                  )}
+                </button>
+                <button 
+                  className="flex items-center px-3 py-2 rounded-md shadow-sm hover:bg-gray-100 transition-colors border border-gray-200 bg-white text-gray-700"
+                  onClick={() => {
+                    if (isEditMode) {
+                      handleSaveContent();
+                    } else {
+                      setIsEditMode(true);
+                    }
+                  }}
+                  title={isEditMode ? '変更を保存' : '編集モード'}
+                >
+                  {isEditMode ? (
+                    <>
+                      <Save size={16} className="mr-1" />
+                      <span className="text-sm font-medium">保存</span>
+                    </>
+                  ) : (
+                    <>
+                      <Edit size={16} className="mr-1" />
+                      <span className="text-sm font-medium">編集</span>
+                    </>
+                  )}
+                </button>
               </div>
             </div>
-          </Card>
-        </div>
+          </div>
+        </Card>
 
-        <div className="space-y-6">
-          <Card title="SEO情報">
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between items-center mb-1">
-                  <h4 className="text-sm font-medium text-gray-700">タイトル</h4>
-                  <button 
-                    className="text-xs text-primary-600 hover:text-primary-800 flex items-center"
-                    onClick={() => handleCopy(content.title, 'title')}
-                  >
-                    {copied === 'title' ? 'コピーしました！' : 'コピー'}
-                    {copied !== 'title' && <Copy size={12} className="ml-1" />}
-                  </button>
-                </div>
-                <p className="text-sm bg-gray-50 p-2 rounded border">{content.title}</p>
-              </div>
-              
-              <div>
-                <div className="flex justify-between items-center mb-1">
-                  <h4 className="text-sm font-medium text-gray-700">メタディスクリプション</h4>
-                  <button 
-                    className="text-xs text-primary-600 hover:text-primary-800 flex items-center"
-                    onClick={() => handleCopy(content.metaDescription, 'meta')}
-                  >
-                    {copied === 'meta' ? 'コピーしました！' : 'コピー'}
-                    {copied !== 'meta' && <Copy size={12} className="ml-1" />}
-                  </button>
-                </div>
-                <p className="text-sm bg-gray-50 p-2 rounded border">{content.metaDescription}</p>
-              </div>
-              
-              <div>
-                <div className="flex justify-between items-center mb-1">
-                  <h4 className="text-sm font-medium text-gray-700">パーマリンク</h4>
-                  <button 
-                    className="text-xs text-primary-600 hover:text-primary-800 flex items-center"
-                    onClick={() => handleCopy(content.permalink, 'permalink')}
-                  >
-                    {copied === 'permalink' ? 'コピーしました！' : 'コピー'}
-                    {copied !== 'permalink' && <Copy size={12} className="ml-1" />}
-                  </button>
-                </div>
-                <p className="text-sm bg-gray-50 p-2 rounded border">{content.permalink}</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card title="ダウンロードオプション">
-            <div className="space-y-4">
-              <p className="text-sm text-gray-600">
-                生成されたコンテンツをHTMLファイルとしてダウンロードできます。
-              </p>
-              <Button
-                variant="outline"
-                fullWidth
-                leftIcon={<FileText size={16} />}
-                onClick={() => {
-                  const element = document.createElement('a');
-                  const file = new Blob([content.content], {type: 'text/html'});
-                  element.href = URL.createObjectURL(file);
-                  element.download = `${content.permalink || 'lp-content'}.html`;
-                  document.body.appendChild(element);
-                  element.click();
-                  document.body.removeChild(element);
-                }}
-              >
-                HTMLファイルをダウンロード
-              </Button>
-            </div>
-          </Card>
-
-          <div className="bg-primary-50 border border-primary-100 rounded-lg p-4">
-            <h4 className="text-sm font-medium text-primary-800 mb-2">生成情報</h4>
-            <div className="text-xs text-gray-600 space-y-1">
-              <p>生成日時: {content.createdAt.toLocaleString('ja-JP')}</p>
-              <p>使用モデル: GPT-4o</p>
-              <p>文字数: 約{content.content.length}文字</p>
-            </div>
+        <div className="mt-6 bg-primary-50 border border-primary-100 rounded-lg p-4">
+          <h4 className="text-sm font-medium text-primary-800 mb-2">生成情報</h4>
+          <div className="text-xs text-gray-600 space-y-1">
+            <p>生成日時: {content.createdAt.toLocaleString('ja-JP')}</p>
+            <p>使用モデル: GPT-4o</p>
+            <p>文字数: 約{content.content.length}文字</p>
           </div>
         </div>
       </div>

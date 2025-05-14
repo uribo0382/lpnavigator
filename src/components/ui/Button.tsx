@@ -43,8 +43,11 @@ const Button: React.FC<ButtonProps> = ({
   
   const widthStyles = fullWidth ? 'w-full' : '';
   
+  // dangerボタンの場合は、無効状態でも赤い枠線を保持する
   const disabledStyles = (disabled || isLoading) 
-    ? 'opacity-50 cursor-not-allowed pointer-events-none text-gray-400 border-gray-300' 
+    ? variant === 'danger' 
+      ? 'opacity-50 cursor-not-allowed pointer-events-none text-gray-400 border-red-500' 
+      : 'opacity-50 cursor-not-allowed pointer-events-none text-gray-400 border-gray-300' 
     : '';
 
   return (
@@ -78,4 +81,4 @@ const Button: React.FC<ButtonProps> = ({
   );
 };
 
-export default Button;
+export default Button; 

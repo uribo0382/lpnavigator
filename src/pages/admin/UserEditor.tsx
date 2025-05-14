@@ -52,9 +52,10 @@ const roleOptions = [
 
 // プランオプション
 const planOptions = [
-  { value: 'free', label: '無料プラン' },
-  { value: 'basic', label: 'ベーシックプラン' },
-  { value: 'premium', label: 'プロフェッショナルプラン' },
+  { value: 'free', label: 'フリープラン' },
+  { value: 'standard', label: 'スタンダードプラン' },
+  { value: 'premium', label: 'プレミアムプラン' },
+  { value: 'enterprise', label: 'エンタープライズプラン' },
 ];
 
 // ユーザー編集コンポーネント
@@ -589,8 +590,8 @@ const UserEditor: React.FC = () => {
         onConfirm={handleDeleteUser}
         title="ユーザー削除"
         message={`このユーザーを削除してもよろしいですか？この操作は取り消せません。`}
-        confirmText="削除する"
-        cancelText="キャンセル"
+        confirmLabel="削除する"
+        cancelLabel="キャンセル"
       />
 
       {/* ステータス変更確認ダイアログ */}
@@ -600,8 +601,8 @@ const UserEditor: React.FC = () => {
         onConfirm={handleToggleStatus}
         title={formData.isActive ? "ユーザー無効化" : "ユーザー有効化"}
         message={`このユーザーを${formData.isActive ? '無効' : '有効'}にしてもよろしいですか？`}
-        confirmText={formData.isActive ? "無効化する" : "有効化する"}
-        cancelText="キャンセル"
+        confirmLabel={formData.isActive ? "無効化する" : "有効化する"}
+        cancelLabel="キャンセル"
       />
 
       {/* パスワードリセット確認ダイアログ */}
@@ -611,8 +612,8 @@ const UserEditor: React.FC = () => {
         onConfirm={handleResetPassword}
         title="パスワードリセット"
         message="パスワードリセットメールを送信してもよろしいですか？"
-        confirmText="送信する"
-        cancelText="キャンセル"
+        confirmLabel="送信する"
+        cancelLabel="キャンセル"
       />
     </div>
   );

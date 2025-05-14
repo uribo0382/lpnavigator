@@ -7,6 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 const Layout: React.FC = () => {
   const { currentUser } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   
   if (!currentUser) {
     return <Outlet />;
@@ -15,6 +16,11 @@ const Layout: React.FC = () => {
   // モバイルメニューの開閉を切り替える関数
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  // サイドバーの折り畳みを切り替える関数
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed(!isSidebarCollapsed);
   };
 
   return (
@@ -28,10 +34,14 @@ const Layout: React.FC = () => {
       )}
       
       {/* サイドバー - モバイル表示時は条件付きで表示 */}
-      <div className={`fixed inset-y-0 left-0 z-30 w-64 bg-white transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${
+      <div className={`fixed inset-y-0 left-0 z-30 ${isSidebarCollapsed ? 'w-16' : 'w-64'} bg-white transform transition-all duration-300 ease-in-out lg:relative lg:translate-x-0 ${
         isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
       } lg:block`}>
-        <Sidebar onCloseMobileMenu={() => setIsMobileMenuOpen(false)} />
+        <Sidebar 
+          onCloseMobileMenu={() => setIsMobileMenuOpen(false)} 
+          isSidebarCollapsed={isSidebarCollapsed}
+          toggleSidebar={toggleSidebar}
+        />
       </div>
       
       <div className="flex flex-col flex-1 overflow-hidden">

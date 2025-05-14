@@ -13,9 +13,16 @@ import UsersManagement from './pages/admin/UsersManagement';
 import UserEditor from './pages/admin/UserEditor';
 import ApiSettings from './pages/admin/ApiSettings';
 import Analytics from './pages/admin/Analytics';
+import FormulaManagement from './pages/admin/formula/FormulaManagement';
 import ContentGenerator from './pages/ContentGenerator';
 import GeneratedContent from './pages/generator/GeneratedContent';
 import ContentHistory from './pages/generator/ContentHistory';
+import AdCopyGenerator from './pages/generator/AdCopyGenerator';
+import AdCopyDisplay from './pages/generator/AdCopyDisplay';
+import AdCopyHistory from './pages/generator/AdCopyHistory';
+import LpArticleGenerator from './pages/generator/LpArticleGenerator';
+import LpArticleDisplay from './pages/generator/LpArticleDisplay';
+import LpArticleHistory from './pages/generator/LpArticleHistory';
 import NotFound from './pages/NotFound';
 import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -126,6 +133,15 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              {/* フォーミュラ管理ルート - 新規追加 */}
+              <Route
+                path="/admin/formula/*"
+                element={
+                  <ProtectedRoute requiredRole="admin">
+                    <FormulaManagement />
+                  </ProtectedRoute>
+                }
+              />
               <Route
                 path="/admin/users"
                 element={
@@ -201,6 +217,62 @@ function App() {
                 element={
                   <ProtectedRoute requiredRole="user">
                     <ContentHistory />
+                  </ProtectedRoute>
+                } 
+              />
+
+              {/* 広告文関連のルート - 新規追加 */}
+              <Route 
+                path="/generator/adcopy" 
+                element={
+                  <ProtectedRoute requiredRole="user">
+                    <AdCopyDisplay />
+                  </ProtectedRoute>
+                } 
+              />
+
+              <Route 
+                path="/generator/adcopy/create" 
+                element={
+                  <ProtectedRoute requiredRole="user">
+                    <AdCopyGenerator />
+                  </ProtectedRoute>
+                } 
+              />
+
+              <Route 
+                path="/generator/adcopy/history" 
+                element={
+                  <ProtectedRoute requiredRole="user">
+                    <AdCopyHistory />
+                  </ProtectedRoute>
+                } 
+              />
+              
+              {/* LP記事関連のルート - 新規追加 */}
+              <Route 
+                path="/generator/lparticle" 
+                element={
+                  <ProtectedRoute requiredRole="user">
+                    <LpArticleDisplay />
+                  </ProtectedRoute>
+                } 
+              />
+
+              <Route 
+                path="/generator/lparticle/create" 
+                element={
+                  <ProtectedRoute requiredRole="user">
+                    <LpArticleGenerator />
+                  </ProtectedRoute>
+                } 
+              />
+
+              <Route 
+                path="/generator/lparticle/history" 
+                element={
+                  <ProtectedRoute requiredRole="user">
+                    <LpArticleHistory />
                   </ProtectedRoute>
                 } 
               />

@@ -109,9 +109,6 @@ const ContentHistory: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredGeneratedLPs, setFilteredGeneratedLPs] = useState(mockGeneratedLPs);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [selectedContent, setSelectedContent] = useState<typeof mockGeneratedLPs[0] | null>(null);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [editedContent, setEditedContent] = useState('');
   const [copied, setCopied] = useState<string | null>(null);
   const [savedItems, setSavedItems] = useState<SavedData[]>([]);
   const [activeTab, setActiveTab] = useState('completed');
@@ -125,7 +122,7 @@ const ContentHistory: React.FC = () => {
   useEffect(() => {
     setSavedItems(mockSavedItemsData);
     localStorage.setItem('lp_navigator_saved_list', JSON.stringify(mockSavedItemsData));
-    setActiveTab('saved');
+    setActiveTab('completed');
   }, []);
 
   // 検索処理 (生成済みLPと保存データの両方に対応)
@@ -199,13 +196,11 @@ const ContentHistory: React.FC = () => {
     try {
       const item = filteredGeneratedLPs.find(i => i.id === id);
       if (item) {
-        const cleanedContent = item.content.replace(
-          /<div class="cta-box">[\s\S]*?<\/div>/gi, 
-          '<div class="cta-box"><button class="cta-button">今すぐ詳細を見る</button></div>'
-        );
-        setSelectedContent({ ...item, content: cleanedContent });
-        setEditedContent(cleanedContent);
-        setIsEditMode(false);
+        // 選択した基本情報をローカルストレージに保存
+        localStorage.setItem('lp_navigator_generated_content', JSON.stringify(item));
+        
+        // 基本情報詳細ページへ遷移
+        navigate('/generator/content');
       }
     } catch (error) {
       console.error('View item error:', error);
@@ -259,61 +254,6 @@ const ContentHistory: React.FC = () => {
     }
   };
 
-  const closePreview = () => {
-    setSelectedContent(null);
-    setIsEditMode(false);
-  };
-
-  const htmlToText = (html: string) => {
-    try {
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = html;
-      return tempDiv.textContent || tempDiv.innerText || '';
-    } catch (error) {
-      console.error('HTML to text conversion error:', error);
-      setError('テキスト変換中にエラーが発生しました。');
-      return '';
-    }
-  };
-
-  const handleCopy = (text: string) => {
-    try {
-      const textToCopy = htmlToText(text);
-      navigator.clipboard.writeText(textToCopy);
-      setCopied('content');
-      setTimeout(() => setCopied(null), 2000);
-    } catch (error) {
-      console.error('Copy error:', error);
-      setError('テキストのコピー中にエラーが発生しました。');
-    }
-  };
-
-  const toggleEditMode = () => {
-    if (isEditMode) {
-      saveContent();
-    } else {
-      setIsEditMode(true);
-    }
-  };
-
-  const saveContent = () => {
-    setIsEditMode(false);
-    if (selectedContent) {
-      console.log('コンテンツを保存しました:', editedContent);
-      // ここで実際に保存する処理を実装 (例: filteredGeneratedLPs を更新)
-      setFilteredGeneratedLPs(prevItems => 
-        prevItems.map(item => 
-          item.id === selectedContent.id ? { ...item, content: editedContent } : item
-        )
-      );
-      setSelectedContent(prev => prev ? { ...prev, content: editedContent } : null);
-    }
-  };
-
-  const handleEditorChange = (e: React.FormEvent<HTMLDivElement>) => {
-    setEditedContent(e.currentTarget.innerHTML);
-  };
-
   // 保存データタブで表示するアイテムリスト (検索対応)
   const displayedSavedItems = searchTerm.trim() 
     ? savedItems.filter(item => item.title.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -327,10 +267,8 @@ const ContentHistory: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">LP履歴 & 保存データ</h1>
-      </div>
+    <div className="flex-1 overflow-y-auto p-0">
+      <h1 className="text-2xl font-bold text-gray-800 mb-6">基本情報一覧</h1>
 
       {error && (
         <div className="bg-error-50 border border-error-200 text-error-700 p-4 rounded-md mb-4">
@@ -346,128 +284,49 @@ const ContentHistory: React.FC = () => {
         </div>
       )}
 
-      <div className="flex mb-6 border-b">
-        <button
-          className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${
-            activeTab === 'completed' 
-              ? 'border-primary-500 text-primary-600' 
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-          onClick={() => setActiveTab('completed')}
-        >
-          生成済みLP記事
-        </button>
-        <button
-          className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${
-            activeTab === 'saved' 
-              ? 'border-primary-500 text-primary-600' 
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-          onClick={() => setActiveTab('saved')}
-        >
-          保存データ
-        </button>
-      </div>
-
-      <div className="mb-4">
-        <Input
-          placeholder="タイトルで検索..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)} // Simplified onChange
-          leftIcon={<Search size={16} className="text-gray-400" />}
-          fullWidth
-        />
-      </div>
-
-      {selectedContent && activeTab === 'completed' && (
-        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="p-4 border-b flex justify-between items-center">
-              <h2 className="text-xl font-bold">{selectedContent.title}</h2>
-              <Button
-                variant="ghost"
-                size="sm"
-                leftIcon={<X size={16} />}
-                onClick={closePreview}
-              >
-                閉じる
-              </Button>
-            </div>
-            <div className="overflow-auto flex-grow p-0">
-              {isEditMode ? (
-                <div
-                  className="content-wrapper w-full h-full bg-white overflow-auto p-6 pb-20"
-                  contentEditable
-                  dangerouslySetInnerHTML={{ __html: editedContent }} // Set initial content for editing
-                  style={{ minHeight: '400px', caretColor: 'var(--color-gray-800)' }}
-                  onInput={handleEditorChange}
-                />
-              ) : (
-                <div 
-                  className="content-wrapper w-full h-full bg-white overflow-auto p-6 pb-20"
-                  dangerouslySetInnerHTML={{ __html: selectedContent.content }}
-                  style={{ minHeight: '400px' }}
-                />
-              )}
-            </div>
-            <div className="bg-gray-50 p-3 border-t border-gray-200 flex justify-start items-center">
-              <div className="flex space-x-3">
-                <button
-                  className="flex items-center px-3 py-2 rounded-md bg-white hover:bg-gray-100 transition-colors border border-gray-200 text-gray-700 shadow-sm"
-                  onClick={() => handleCopy(isEditMode ? editedContent : selectedContent.content)}
-                  title="テキストをコピー"
-                >
-                  {copied === 'content' ? (
-                    <>
-                      <Check size={16} className="mr-1" />
-                      <span className="text-sm font-medium">コピー済み</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy size={16} className="mr-1" />
-                      <span className="text-sm font-medium">コピー</span>
-                    </>
-                  )}
-                </button>
-                <button
-                  className="flex items-center px-3 py-2 rounded-md shadow-sm hover:bg-gray-100 transition-colors border border-gray-200 bg-white text-gray-700"
-                  onClick={toggleEditMode}
-                  title={isEditMode ? '変更を保存' : '編集モード'}
-                >
-                  {isEditMode ? (
-                    <>
-                      <Save size={16} className="mr-1" />
-                      <span className="text-sm font-medium">保存</span>
-                    </>
-                  ) : (
-                    <>
-                      <Edit size={16} className="mr-1" />
-                      <span className="text-sm font-medium">編集</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-            <div className="p-4 border-t flex justify-between">
-              <div className="text-xs text-gray-500">
-                生成日時: {formatDateDisplay(selectedContent.createdAt)} | 
-                使用モデル: {selectedContent.model} | 
-                文字数: 約{selectedContent.wordCount}文字
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                leftIcon={<Download size={14} />}
-                onClick={() => handleDownloadItem(selectedContent)}
-              >
-                ダウンロード
-              </Button>
-            </div>
-          </div>
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-800 flex items-center">
+            <FileText size={20} className="mr-2 text-primary-500" />
+            基本情報検索
+          </h2>
         </div>
-      )}
 
-      <Card>
+        <div className="flex mb-6 border-b">
+          <button
+            className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${
+              activeTab === 'completed' 
+                ? 'border-primary-500 text-primary-600' 
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+            onClick={() => setActiveTab('completed')}
+          >
+            生成済み基本情報
+          </button>
+          <button
+            className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${
+              activeTab === 'saved' 
+                ? 'border-primary-500 text-primary-600' 
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+            onClick={() => setActiveTab('saved')}
+          >
+            保存データ
+          </button>
+        </div>
+
+        <div className="mb-4">
+          <Input
+            placeholder="タイトルで検索..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            leftIcon={<Search size={16} className="text-gray-400" />}
+            fullWidth
+          />
+        </div>
+      </div>
+
+      <Card className="p-4 md:p-6">
         {activeTab === 'completed' ? (
           <div className="space-y-6">
             {filteredGeneratedLPs.length === 0 ? (
@@ -487,14 +346,6 @@ const ContentHistory: React.FC = () => {
                         onClick={() => handleViewItem(item.id)}
                       >
                         表示
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        leftIcon={<Download size={14} />}
-                        onClick={() => handleDownloadItem(item)}
-                      >
-                        ダウンロード
                       </Button>
                       <Button
                         variant="danger"
@@ -605,14 +456,11 @@ const ContentHistory: React.FC = () => {
           setShowDeleteConfirmDialog(false);
           setItemToDelete(null);
         }}
+        title={`${itemToDelete?.type === 'saved' ? '保存データ' : '基本情報'}を削除しますか？`}
+        message={`この${itemToDelete?.type === 'saved' ? '保存データ' : '基本情報'}は完全に削除され、元に戻すことはできません。`}
+        confirmLabel="削除する"
+        cancelLabel="キャンセル"
         onConfirm={executeDelete}
-        onCancel={() => {
-            setShowDeleteConfirmDialog(false);
-            setItemToDelete(null);
-        }}
-        message="このアイテムを削除してもよろしいですか？"
-        confirmText="削除"
-        cancelText="キャンセル"
       />
     </div>
   );

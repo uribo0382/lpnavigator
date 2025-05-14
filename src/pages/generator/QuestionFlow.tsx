@@ -6,6 +6,7 @@ import Card from '../../components/ui/Card';
 import TextArea from '../../components/ui/TextArea';
 import Select from '../../components/ui/Select';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import BasicInfoReview from './BasicInfoReview';
 import { mockQuestions } from '../../utils/mockData';
 
 interface QuestionFlowProps {
@@ -114,6 +115,9 @@ const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
   const [animationProgress, setAnimationProgress] = useState(0);
   const [showCompletedAnimation, setShowCompletedAnimation] = useState(false);
   const animationRef = useRef<number | null>(null);
+  
+  // 確認画面を表示するためのステート追加
+  const [showReview, setShowReview] = useState(false);
   
   // アニメーションの制御用
   useEffect(() => {
@@ -306,13 +310,24 @@ const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
     return (answeredCount / questions.length) * 100;
   };
 
-  // Triggers the confirmation dialog for LP generation
-  const handleGenerateContent = () => {
+  // 入力内容確認画面を表示
+  const handleShowReview = () => {
     if (!checkRequiredAnswers()) {
       setAlertMessage('必須質問に回答してください。');
       setShowAlertDialog(true);
       return;
     }
+    setShowReview(true);
+  };
+
+  // 入力画面に戻る
+  const handleBackToInput = () => {
+    setShowReview(false);
+  };
+
+  // 確認画面から基本情報生成の確認ダイアログを表示
+  const handleConfirmFromReview = () => {
+    setShowReview(false);
     setShowGenerateConfirmDialog(true);
   };
 
@@ -672,9 +687,24 @@ const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
     };
   }, []);
 
+  // 確認画面を表示する場合
+  if (showReview) {
+    return (
+      <BasicInfoReview
+        answers={answers}
+        questions={questions}
+        onBack={handleBackToInput}
+        onConfirm={handleConfirmFromReview}
+        selectedModel={selectedModel}
+        setSelectedModel={setSelectedModel}
+        modelOptions={modelOptions}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">LP記事生成</h1>
+      <h1 className="text-2xl font-bold text-gray-800 mb-6">基本情報の作成</h1>
 
       {/* 入力方法説明パネル */}
       {showInstructions && (
@@ -721,7 +751,7 @@ const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-800 flex items-center">
             <FileText size={20} className="mr-2 text-primary-500" />
-            LP記事情報収集
+            基本情報収集
           </h2>
           <div className="flex items-center space-x-3">
             <Button
@@ -772,7 +802,7 @@ const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
         {/* シンプルな質問ナビゲーション - 数字と枠を強調 */}
         <div className="bg-gray-50 p-3 rounded-lg mb-6">
           <div className="flex justify-center items-center">
-            <div className="grid grid-flow-col gap-2 auto-cols-fr w-full max-w-md">
+            <div className="grid grid-cols-5 sm:grid-cols-7 md:grid-cols-10 lg:grid-cols-12 xl:grid-cols-21 gap-1 w-full">
               {questions.map((q, index) => {
                 // 状態の確認
                 const isActive = activeQuestionIndex === index;
@@ -930,27 +960,17 @@ const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
             保存
           </Button>
 
-          {/* 最後の質問の場合は生成ボタンとモデル選択、それ以外は次へボタンを表示 */}
+          {/* 最後の質問の場合は確認ボタンとモデル選択、それ以外は次へボタンを表示 */}
           {isLastQuestion ? (
             <div className="flex flex-col sm:flex-row items-start sm:items-center w-full sm:w-auto sm:ml-auto gap-2 mt-2 sm:mt-0">
-              <div className="w-full sm:w-48 mb-2 sm:mb-0">
-                <Select
-                  options={modelOptions}
-                  value={selectedModel}
-                  onChange={setSelectedModel}
-                  helperText=""
-                  dropdownPosition="top"
-                />
-              </div>
               <Button
                 variant="primary"
-                leftIcon={<Sparkles size={16} />}
-                onClick={handleGenerateContent}
+                leftIcon={<FileText size={16} />}
+                onClick={handleShowReview}
                 disabled={isGenerating}
-                isLoading={isGenerating}
                 className="min-w-32 important-button w-full sm:w-auto"
               >
-                {isGenerating ? 'LP記事を生成中...' : 'LP記事を生成'}
+                入力内容を確認
               </Button>
             </div>
           ) : (
@@ -1037,7 +1057,7 @@ const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
                   </span>
                 </div>
                 <p className="text-gray-400 text-sm mb-2">
-                  AIが高度なアルゴリズムを駆使して最適なLP記事を生成しています
+                  AIが高度なアルゴリズムを駆使して最適な基本情報を生成しています
                 </p>
               </div>
               
@@ -1048,7 +1068,7 @@ const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
                     生成完了！
                   </h2>
                   <p className="text-gray-400 text-sm">
-                    最適なLP記事が生成されました。画面遷移します...
+                    最適な基本情報が生成されました。画面遷移します...
                   </p>
                 </div>
               )}
@@ -1108,8 +1128,8 @@ const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
         onCancel={handleNavigateWithoutSaving}
         title="変更が保存されていません"
         message="入力内容が保存されていません。保存しますか？"
-        confirmText="保存する"
-        cancelText="保存せずに移動"
+        confirmLabel="保存する"
+        cancelLabel="保存せずに移動"
       />
 
       {/* アラートダイアログ (必須項目未入力時など) */}
@@ -1118,7 +1138,7 @@ const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
         onClose={() => setShowAlertDialog(false)}
         onConfirm={() => setShowAlertDialog(false)}
         message={alertMessage}
-        confirmText="OK"
+        confirmLabel="OK"
       />
 
       {/* Confirm Dialog for LP Generation */}
@@ -1127,9 +1147,9 @@ const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
         onClose={() => setShowGenerateConfirmDialog(false)}
         onConfirm={executeGenerateContent}
         onCancel={() => setShowGenerateConfirmDialog(false)}
-        message="LP記事を生成します。よろしいですか？"
-        confirmText="生成する"
-        cancelText="キャンセル"
+        message="基本情報を生成します。よろしいですか？"
+        confirmLabel="生成する"
+        cancelLabel="キャンセル"
       />
     </div>
   );

@@ -17,7 +17,7 @@ import Card from '../components/ui/Card';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 
 type TabType = 'profile' | 'password' | 'plan' | 'payment' | 'account';
-type PlanType = '無料プラン' | 'ベーシックプラン' | 'プロフェッショナルプラン';
+type PlanType = 'フリープラン' | 'スタンダードプラン' | 'プレミアムプラン' | 'エンタープライズプラン';
 
 const ProfilePage: React.FC = () => {
   const { currentUser, logout } = useAuth();
@@ -44,7 +44,7 @@ const ProfilePage: React.FC = () => {
   const [success, setSuccess] = useState<string | null>(null);
   
   // 現在のプラン（モック）
-  const [currentPlan, setCurrentPlan] = useState<PlanType>('無料プラン');
+  const [currentPlan, setCurrentPlan] = useState<PlanType>('フリープラン');
   
   // 削除確認ダイアログの状態
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -168,14 +168,48 @@ const ProfilePage: React.FC = () => {
   // プラン料金を取得する関数
   const getPlanPrice = (plan: PlanType): string => {
     switch (plan) {
-      case '無料プラン':
+      case 'フリープラン':
         return '¥0';
-      case 'ベーシックプラン':
-        return '¥980';
-      case 'プロフェッショナルプラン':
-        return '¥2,980';
+      case 'スタンダードプラン':
+        return '¥9,800';
+      case 'プレミアムプラン':
+        return '¥19,800';
+      case 'エンタープライズプラン':
+        return '¥29,800';
       default:
         return '';
+    }
+  };
+  
+  // プランの説明を取得する関数
+  const getPlanDescription = (plan: PlanType): string => {
+    switch (plan) {
+      case 'フリープラン':
+        return '広告文生成が月に3回まで利用できます。';
+      case 'スタンダードプラン':
+        return '広告文の生成が無制限。AIの性能が低いモデルを使用します。';
+      case 'プレミアムプラン':
+        return '広告文の生成が無制限。AIの性能が高いモデルを使用します。';
+      case 'エンタープライズプラン':
+        return '全機能が利用可能な最上位プラン。広告文の生成が無制限、高性能AIモデル使用、LP記事生成対応、優先サポート付き。';
+      default:
+        return '';
+    }
+  };
+  
+  // プランの特徴を取得する関数
+  const getPlanFeatures = (plan: PlanType): string[] => {
+    switch (plan) {
+      case 'フリープラン':
+        return ['広告文生成：月3回まで', '基本的なAIモデル', 'メールサポート'];
+      case 'スタンダードプラン':
+        return ['広告文生成：無制限', '標準AIモデル', 'チャットサポート', 'APIアクセス'];
+      case 'プレミアムプラン':
+        return ['広告文生成：無制限', '高性能AIモデル', '優先サポート', 'APIアクセス', 'カスタム広告テンプレート'];
+      case 'エンタープライズプラン':
+        return ['広告文生成：無制限', '最高性能AIモデル', 'LP記事生成機能', '24時間サポート', 'APIアクセス', 'カスタム広告テンプレート', 'チーム共有機能', 'ホワイトラベル対応'];
+      default:
+        return [];
     }
   };
   
@@ -288,62 +322,149 @@ const ProfilePage: React.FC = () => {
       <div className="space-y-4">
         <h3 className="font-medium mb-2">利用可能なプラン</h3>
         
-        {/* プランカード */}
-        <div className={`p-4 border rounded-md ${currentPlan === '無料プラン' ? 'border-primary-500 bg-primary-50' : 'border-gray-200'}`}>
+        {/* フリープラン */}
+        <div className={`p-4 border rounded-md ${currentPlan === 'フリープラン' ? 'border-primary-500 bg-primary-50' : 'border-gray-200'}`}>
           <div className="flex justify-between items-center mb-2">
-            <h4 className="font-medium">無料プラン</h4>
-            {currentPlan === '無料プラン' && (
+            <h4 className="font-medium">フリープラン</h4>
+            {currentPlan === 'フリープラン' && (
               <span className="bg-primary-100 text-primary-800 text-xs py-1 px-2 rounded-full">現在のプラン</span>
             )}
           </div>
-          <p className="text-sm text-gray-600 mb-4">基本機能が利用可能です。</p>
-          <p className="font-medium mb-2">¥0 / 月</p>
+          <p className="text-sm text-gray-600 mb-4">{getPlanDescription('フリープラン')}</p>
+          <ul className="text-sm text-gray-600 mb-4 space-y-1">
+            {getPlanFeatures('フリープラン').map((feature, index) => (
+              <li key={index} className="flex items-start">
+                <span className="text-green-500 mr-2">✓</span>
+                {feature}
+              </li>
+            ))}
+          </ul>
+          <p className="font-medium mb-2">{getPlanPrice('フリープラン')} / 月</p>
           <Button
-            variant={currentPlan === '無料プラン' ? 'outline' : 'primary'}
+            variant={currentPlan === 'フリープラン' ? 'outline' : 'primary'}
             fullWidth
-            disabled={currentPlan === '無料プラン'}
-            onClick={() => handlePlanChange('無料プラン')}
+            disabled={currentPlan === 'フリープラン'}
+            onClick={() => handlePlanChange('フリープラン')}
           >
-            {currentPlan === '無料プラン' ? '利用中' : '選択する'}
+            {currentPlan === 'フリープラン' ? '利用中' : '選択する'}
           </Button>
         </div>
         
-        <div className={`p-4 border rounded-md ${currentPlan === 'ベーシックプラン' ? 'border-primary-500 bg-primary-50' : 'border-gray-200'}`}>
+        {/* スタンダードプラン */}
+        <div className={`p-4 border rounded-md ${currentPlan === 'スタンダードプラン' ? 'border-primary-500 bg-primary-50' : 'border-gray-200'}`}>
           <div className="flex justify-between items-center mb-2">
-            <h4 className="font-medium">ベーシックプラン</h4>
-            {currentPlan === 'ベーシックプラン' && (
+            <h4 className="font-medium">スタンダードプラン</h4>
+            {currentPlan === 'スタンダードプラン' && (
               <span className="bg-primary-100 text-primary-800 text-xs py-1 px-2 rounded-full">現在のプラン</span>
             )}
           </div>
-          <p className="text-sm text-gray-600 mb-4">より多くの機能と生成回数が利用可能です。</p>
-          <p className="font-medium mb-2">¥980 / 月</p>
+          <p className="text-sm text-gray-600 mb-4">{getPlanDescription('スタンダードプラン')}</p>
+          <ul className="text-sm text-gray-600 mb-4 space-y-1">
+            {getPlanFeatures('スタンダードプラン').map((feature, index) => (
+              <li key={index} className="flex items-start">
+                <span className="text-green-500 mr-2">✓</span>
+                {feature}
+              </li>
+            ))}
+          </ul>
+          <p className="font-medium mb-2">{getPlanPrice('スタンダードプラン')} / 月</p>
           <Button
-            variant={currentPlan === 'ベーシックプラン' ? 'outline' : 'primary'}
+            variant={currentPlan === 'スタンダードプラン' ? 'outline' : 'primary'}
             fullWidth
-            disabled={currentPlan === 'ベーシックプラン'}
-            onClick={() => handlePlanChange('ベーシックプラン')}
+            disabled={currentPlan === 'スタンダードプラン'}
+            onClick={() => handlePlanChange('スタンダードプラン')}
           >
-            {currentPlan === 'ベーシックプラン' ? '利用中' : '選択する'}
+            {currentPlan === 'スタンダードプラン' ? '利用中' : '選択する'}
           </Button>
         </div>
         
-        <div className={`p-4 border rounded-md ${currentPlan === 'プロフェッショナルプラン' ? 'border-primary-500 bg-primary-50' : 'border-gray-200'}`}>
+        {/* プレミアムプラン */}
+        <div className={`p-4 border rounded-md ${currentPlan === 'プレミアムプラン' ? 'border-primary-500 bg-primary-50' : 'border-gray-200'}`}>
           <div className="flex justify-between items-center mb-2">
-            <h4 className="font-medium">プロフェッショナルプラン</h4>
-            {currentPlan === 'プロフェッショナルプラン' && (
+            <h4 className="font-medium">プレミアムプラン</h4>
+            {currentPlan === 'プレミアムプラン' && (
               <span className="bg-primary-100 text-primary-800 text-xs py-1 px-2 rounded-full">現在のプラン</span>
             )}
           </div>
-          <p className="text-sm text-gray-600 mb-4">無制限の生成と優先サポートが含まれます。</p>
-          <p className="font-medium mb-2">¥2,980 / 月</p>
+          <p className="text-sm text-gray-600 mb-4">{getPlanDescription('プレミアムプラン')}</p>
+          <ul className="text-sm text-gray-600 mb-4 space-y-1">
+            {getPlanFeatures('プレミアムプラン').map((feature, index) => (
+              <li key={index} className="flex items-start">
+                <span className="text-green-500 mr-2">✓</span>
+                {feature}
+              </li>
+            ))}
+          </ul>
+          <p className="font-medium mb-2">{getPlanPrice('プレミアムプラン')} / 月</p>
           <Button
-            variant={currentPlan === 'プロフェッショナルプラン' ? 'outline' : 'primary'}
+            variant={currentPlan === 'プレミアムプラン' ? 'outline' : 'primary'}
             fullWidth
-            disabled={currentPlan === 'プロフェッショナルプラン'}
-            onClick={() => handlePlanChange('プロフェッショナルプラン')}
+            disabled={currentPlan === 'プレミアムプラン'}
+            onClick={() => handlePlanChange('プレミアムプラン')}
           >
-            {currentPlan === 'プロフェッショナルプラン' ? '利用中' : '選択する'}
+            {currentPlan === 'プレミアムプラン' ? '利用中' : '選択する'}
           </Button>
+        </div>
+        
+        {/* エンタープライズプラン */}
+        <div className={`p-4 border-2 rounded-md shadow-md ${currentPlan === 'エンタープライズプラン' ? 'border-primary-500 bg-primary-50' : 'border-blue-400 bg-blue-50'}`}>
+          <div className="flex justify-between items-center mb-2">
+            <h4 className="font-medium text-lg">エンタープライズプラン</h4>
+            {currentPlan === 'エンタープライズプラン' ? (
+              <span className="bg-primary-100 text-primary-800 text-xs py-1 px-2 rounded-full">現在のプラン</span>
+            ) : (
+              <span className="bg-blue-100 text-blue-800 text-xs py-1 px-2 rounded-full">おすすめ</span>
+            )}
+          </div>
+          <p className="text-sm text-gray-600 mb-4">{getPlanDescription('エンタープライズプラン')}</p>
+          <ul className="text-sm text-gray-600 mb-4 space-y-1">
+            {getPlanFeatures('エンタープライズプラン').map((feature, index) => (
+              <li key={index} className="flex items-start">
+                <span className="text-blue-500 mr-2">✓</span>
+                {feature}
+              </li>
+            ))}
+          </ul>
+          <div className="bg-blue-100 text-blue-800 text-sm p-2 rounded mb-4">
+            年間契約で20%オフ！ 月額換算：¥23,840
+          </div>
+          <p className="font-medium mb-2">{getPlanPrice('エンタープライズプラン')} / 月</p>
+          <Button
+            variant={currentPlan === 'エンタープライズプラン' ? 'outline' : 'primary'}
+            fullWidth
+            disabled={currentPlan === 'エンタープライズプラン'}
+            onClick={() => handlePlanChange('エンタープライズプラン')}
+            className={currentPlan === 'エンタープライズプラン' ? '' : 'bg-blue-600 hover:bg-blue-700'}
+          >
+            {currentPlan === 'エンタープライズプラン' ? '利用中' : '選択する'}
+          </Button>
+        </div>
+      </div>
+
+      {/* FAQ セクション */}
+      <div className="mt-8 bg-gray-50 p-6 rounded-md border border-gray-200">
+        <h3 className="font-medium text-lg mb-4">よくある質問</h3>
+        
+        <div className="space-y-4">
+          <div>
+            <h4 className="font-medium text-gray-900 mb-2">プランはいつでも変更できますか？</h4>
+            <p className="text-sm text-gray-600">はい、いつでもプランの変更が可能です。アップグレードの場合は即時反映され、ダウングレードの場合は現在の請求期間の終了時に反映されます。</p>
+          </div>
+          
+          <div>
+            <h4 className="font-medium text-gray-900 mb-2">年間契約のメリットは何ですか？</h4>
+            <p className="text-sm text-gray-600">年間契約を選択すると、月額料金から20%割引が適用されます。長期的に利用される予定であれば、年間契約がお得です。</p>
+          </div>
+          
+          <div>
+            <h4 className="font-medium text-gray-900 mb-2">LP記事生成とは何ですか？</h4>
+            <p className="text-sm text-gray-600">LP記事生成は、ランディングページ用の完全な記事コンテンツを自動生成する機能です。高性能AIを活用して、SEO対策された魅力的なランディングページ記事を簡単に作成できます。</p>
+          </div>
+          
+          <div>
+            <h4 className="font-medium text-gray-900 mb-2">エンタープライズプランの詳細について知りたいです</h4>
+            <p className="text-sm text-gray-600">エンタープライズプランについての詳細は、サポートチームまでお問い合わせください。チーム全体での利用や独自のカスタマイズについてもご相談いただけます。</p>
+          </div>
         </div>
       </div>
     </div>
@@ -568,8 +689,8 @@ const ProfilePage: React.FC = () => {
         onConfirm={confirmDeleteAccount}
         title="アカウント削除"
         message="アカウントを削除すると、すべてのデータが永久に失われます。この操作は取り消せません。"
-        confirmText="削除する"
-        cancelText="キャンセル"
+        confirmLabel="削除する"
+        cancelLabel="キャンセル"
       />
 
       {/* プラン変更確認ダイアログ */}
@@ -579,8 +700,8 @@ const ProfilePage: React.FC = () => {
         onConfirm={confirmPlanChange}
         title="プラン変更"
         message={selectedPlan ? `プランを${currentPlan}から${selectedPlan}に変更します。月額料金は${getPlanPrice(selectedPlan)}/月になります。よろしいですか？` : ''}
-        confirmText="変更する"
-        cancelText="キャンセル"
+        confirmLabel="変更する"
+        cancelLabel="キャンセル"
       />
 
       {/* ログアウト確認ダイアログ */}
@@ -590,8 +711,8 @@ const ProfilePage: React.FC = () => {
         onConfirm={confirmLogout}
         title="ログアウト"
         message="ログアウトしてもよろしいですか？"
-        confirmText="ログアウト"
-        cancelText="キャンセル"
+        confirmLabel="ログアウト"
+        cancelLabel="キャンセル"
       />
     </div>
   );

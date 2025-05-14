@@ -144,11 +144,10 @@ const UsersManagement: React.FC = () => {
   // プラン表示名を取得
   const getPlanDisplayName = (plan: string) => {
     switch(plan) {
-      case 'free': return '無料プラン';
-      case 'basic': return 'ベーシックプラン';
-      case 'premium': return 'プロフェッショナルプラン';
-      case 'professional': return 'プロフェッショナルプラン';
-      case 'enterprise': return 'プロフェッショナルプラン';
+      case 'free': return 'フリープラン';
+      case 'standard': return 'スタンダードプラン';
+      case 'premium': return 'プレミアムプラン';
+      case 'enterprise': return 'エンタープライズプラン';
       default: return plan;
     }
   };
@@ -201,10 +200,10 @@ const UsersManagement: React.FC = () => {
                 <option value="all">すべてのユーザー</option>
                 <option value="active">有効なユーザーのみ</option>
                 <option value="inactive">無効なユーザーのみ</option>
-                <option value="plan:free">無料プランのみ</option>
-                <option value="plan:basic">ベーシックプランのみ</option>
-                <option value="plan:premium">プロフェッショナルプランのみ</option>
-                <option value="plan:professional">プロフェッショナルプランのみ</option>
+                <option value="plan:free">フリープラン</option>
+                <option value="plan:standard">スタンダードプラン</option>
+                <option value="plan:premium">プレミアムプラン</option>
+                <option value="plan:enterprise">エンタープライズプラン</option>
               </select>
               <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                 <Filter size={16} className="text-gray-400" />
@@ -321,8 +320,10 @@ const UsersManagement: React.FC = () => {
                     <td className="px-4 py-4 whitespace-nowrap hidden sm:table-cell">
                       <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
                         user.plan === 'free' ? 'bg-gray-100 text-gray-800' :
-                        user.plan === 'basic' ? 'bg-blue-100 text-blue-800' :
-                        'bg-indigo-100 text-indigo-800'
+                        user.plan === 'standard' ? 'bg-blue-100 text-blue-800' :
+                        user.plan === 'premium' ? 'bg-indigo-100 text-indigo-800' :
+                        user.plan === 'enterprise' ? 'bg-purple-100 text-purple-800' :
+                        'bg-gray-100 text-gray-800'
                       }`}>
                         {getPlanDisplayName(user.plan)}
                       </span>

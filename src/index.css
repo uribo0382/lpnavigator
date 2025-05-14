@@ -313,3 +313,72 @@ button svg {
   display: inline-block !important;
   visibility: visible !important;
 }
+
+/* 進捗バーアニメーション */
+@keyframes progress {
+  0% { width: 0%; }
+  50% { width: 70%; }
+  100% { width: 100%; }
+}
+
+.animate-progress {
+  animation: progress 3s ease-in-out infinite;
+}
+
+/* グラデーションアニメーション */
+@keyframes gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-gradient {
+  background: linear-gradient(45deg, var(--color-primary-500), var(--color-primary-700), var(--color-secondary-500), var(--color-primary-500));
+  background-size: 200% 200%;
+  animation: gradient 5s ease infinite;
+}
+
+/* 回転アニメーション */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 軌道アニメーション */
+@keyframes orbitSpin {
+  0% { transform: rotate(0deg) translateY(-35px); opacity: 0; }
+  50% { opacity: 1; }
+  100% { transform: rotate(360deg) translateY(-35px); opacity: 0; }
+}
+
+/* スクロールアップアニメーション */
+.scroll-up {
+  animation: scrollUp 6s linear infinite;
+}
+
+@keyframes scrollUp {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-120px); }
+}
+
+/* プログレスバーのフラッシュ効果 */
+.progress-bar-flash {
+  background-position: left top;
+  background-size: 30px 30px;
+  background-image: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.2) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.2) 50%,
+    rgba(255, 255, 255, 0.2) 75%,
+    transparent 75%,
+    transparent
+  );
+  animation: progressBarStripes 1s linear infinite;
+}
+
+@keyframes progressBarStripes {
+  from { background-position: 30px 0; }
+  to { background-position: 0 0; }
+}
