@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Eye, EyeOff, LogIn, UserPlus } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuthFixed } from '../contexts/AuthContextFixed';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 
-const LoginPage: React.FC = () => {
+const LoginPageFixed: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, isLoading, currentUser } = useAuth();
+  const { login, isLoading, currentUser } = useAuthFixed();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -37,7 +37,7 @@ const LoginPage: React.FC = () => {
       } catch (error) {
         console.error('Navigation error:', error);
         // フォールバックとしてwindow.locationを使用
-        window.location.href = '/generator';
+        window.location.href = '/#/generator';
       }
     }
   }, [currentUser, navigate]);
@@ -61,7 +61,7 @@ const LoginPage: React.FC = () => {
     setShowPassword(!showPassword);
   };
 
-  if (isLoading) {
+  if (isLoading && !currentUser) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="p-8 rounded-lg border border-gray-200 bg-white shadow-lg w-full max-w-md text-center">
@@ -155,4 +155,4 @@ const LoginPage: React.FC = () => {
   );
 };
 
-export default LoginPage;
+export default LoginPageFixed;

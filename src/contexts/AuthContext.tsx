@@ -1,185 +1,227 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: 'admin' | 'user';
-}
+import { Session } from '@supabase/supabase-js';
+import {
+  signUp,
+  signIn,
+  signOut,
+  resetPassword as authResetPassword,
+  getSession,
+  getUserProfile,
+  onAuthStateChange,
+  AppUser
+} from '../lib/auth';
 
 interface AuthContextType {
-  currentUser: User | null;
+  currentUser: AppUser | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   isAdmin: () => boolean;
   autoLogin: (role?: 'admin' | 'user') => void;
   register: (name: string, email: string, password: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  session: Session | null;
+  authError: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock users for demonstration
-const MOCK_USERS = [
-  {
-    id: '1',
-    name: '管理者',
-    email: 'admin@example.com',
-    password: 'password',
-    role: 'admin' as const,
-  },
-  {
-    id: '2',
-    name: '一般ユーザー',
-    email: 'user@example.com',
-    password: 'password',
-    role: 'user' as const,
-  },
-];
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [session, setSession] = useState<Session | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
 
-  // Check for stored user on initial load
+  // セッションとユーザー情報の初期化
   useEffect(() => {
-    const storedUser = localStorage.getItem('lp_navigator_user');
-    if (storedUser) {
+    console.log('AuthContext - 初期化開始');
+    let mounted = true; // メモリリーク防止用フラグ
+    
+    const initializeAuth = async () => {
+      // タイムアウトを設定（10秒）
+      const timeoutId = setTimeout(() => {
+        if (mounted && isLoading) {
+          console.error('AuthContext - 初期化タイムアウト');
+          setIsLoading(false);
+        }
+      }, 10000);
+
       try {
-        setCurrentUser(JSON.parse(storedUser));
-      } catch (error) {
-        console.error('Failed to parse stored user', error);
-        localStorage.removeItem('lp_navigator_user');
-      }
-    }
-    
-    // ローカルストレージにユーザーがなければ、デモ用に一般ユーザーとして自動ログイン
-    else {
-      // デモ環境では自動ログイン
-      const isDemo = localStorage.getItem('lp_navigator_demo_mode') === 'true';
-      if (isDemo) {
-        const demoUser = MOCK_USERS.find(user => user.role === 'user');
-        if (demoUser) {
-          const { password, ...userWithoutPassword } = demoUser;
-          setCurrentUser(userWithoutPassword);
-          localStorage.setItem('lp_navigator_user', JSON.stringify(userWithoutPassword));
-        }
-      }
-    }
-    
-    setIsLoading(false);
-  }, []);
-
-  // 初回レンダリング時にデモモードを有効にする
-  useEffect(() => {
-    localStorage.setItem('lp_navigator_demo_mode', 'true');
-  }, []);
-
-  // Mock login function
-  const login = async (email: string, password: string): Promise<void> => {
-    setIsLoading(true);
-    
-    // Simulate network request
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        const foundUser = MOCK_USERS.find(
-          (user) => user.email === email && user.password === password
-        );
+        // 既存のセッションを取得
+        const { session, error } = await getSession();
+        console.log('AuthContext - getSession結果:', { session: !!session, error });
         
-        if (foundUser) {
-          const { password, ...userWithoutPassword } = foundUser;
-          setCurrentUser(userWithoutPassword);
-          localStorage.setItem('lp_navigator_user', JSON.stringify(userWithoutPassword));
+        if (!mounted) return; // コンポーネントがアンマウントされていたら処理を中止
+        
+        if (error) {
+          console.error('セッション取得エラー:', error);
+          clearTimeout(timeoutId);
           setIsLoading(false);
-          resolve();
-        } else {
-          setIsLoading(false);
-          reject(new Error('Invalid email or password'));
+          return;
         }
-      }, 1000);
+
+        if (session?.user) {
+          setSession(session);
+          
+          try {
+            // ユーザープロフィールを取得
+            const profile = await getUserProfile(session.user.id);
+            if (!mounted) return;
+            
+            if (profile) {
+              console.log('AuthContext - プロフィール取得成功:', profile);
+              setCurrentUser(profile);
+            } else {
+              console.warn('AuthContext - プロフィールが見つかりませんでした');
+              setAuthError('ユーザープロフィールの作成に失敗しました。管理者にお問い合わせください。');
+            }
+          } catch (profileError) {
+            console.error('プロフィール取得エラー:', profileError);
+            setAuthError('プロフィールの取得中にエラーが発生しました。');
+          }
+        } else {
+          console.log('AuthContext - セッションが存在しません');
+        }
+      } catch (error) {
+        console.error('AuthContext - 初期化エラー:', error);
+      } finally {
+        // 必ずisLoadingをfalseに設定
+        clearTimeout(timeoutId);
+        if (mounted) {
+          console.log('AuthContext - isLoadingをfalseに設定');
+          setIsLoading(false);
+        }
+      }
+    };
+    
+    initializeAuth();
+    
+    return () => {
+      mounted = false; // クリーンアップ時にフラグを false に設定
+    };
+  }, []); // 依存配列を空にして一度だけ実行
+
+  // 別のuseEffectで認証状態の変更を監視
+  useEffect(() => {
+    // 認証状態の変更を監視
+    const { data: { subscription } } = onAuthStateChange(async (event, session) => {
+      console.log('Auth event:', event, 'Session:', !!session);
+      
+      // INITIAL_SESSION イベントは無視（初期化処理と重複するため）
+      if (event === 'INITIAL_SESSION') {
+        console.log('Ignoring INITIAL_SESSION event');
+        return;
+      }
+      
+      setSession(session);
+
+      if (event === 'SIGNED_IN' && session?.user) {
+        console.log('SIGNED_IN event - プロフィール取得中...');
+        const profile = await getUserProfile(session.user.id);
+        if (profile) {
+          setCurrentUser(profile);
+        } else {
+          setAuthError('ユーザープロフィールの作成に失敗しました。');
+        }
+      } else if (event === 'SIGNED_OUT') {
+        console.log('SIGNED_OUT event');
+        setCurrentUser(null);
+        setAuthError(null);
+      } else if (event === 'USER_UPDATED' && session?.user) {
+        console.log('USER_UPDATED event');
+        const profile = await getUserProfile(session.user.id);
+        if (profile) {
+          setCurrentUser(profile);
+        }
+      }
     });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  // ログイン関数
+  const login = async (email: string, password: string): Promise<void> => {
+    console.log('AuthContext - login開始');
+    setIsLoading(true);
+    setAuthError(null); // エラーをクリア
+    
+    try {
+      const { data, error } = await signIn(email, password);
+      
+      if (error) {
+        console.error('AuthContext - ログインエラー:', error);
+        throw new Error(error.message || 'ログインに失敗しました。');
+      }
+      
+      if (data.session?.user) {
+        console.log('AuthContext - ログイン成功、プロフィール取得中...');
+        setSession(data.session);
+        
+        const profile = await getUserProfile(data.session.user.id);
+        if (profile) {
+          console.log('AuthContext - プロフィール設定:', profile);
+          setCurrentUser(profile);
+        } else {
+          console.warn('AuthContext - プロフィールが取得できませんでした');
+          setAuthError('ユーザープロフィールの作成に失敗しました。管理者にお問い合わせください。');
+        }
+      }
+    } catch (error) {
+      console.error('AuthContext - login関数内エラー:', error);
+      throw error;
+    } finally {
+      console.log('AuthContext - login完了、isLoadingをfalseに設定');
+      setIsLoading(false);
+    }
   };
 
-  // ユーザー登録機能
+  // ユーザー登録機能（メール認証あり）
   const register = async (name: string, email: string, password: string): Promise<void> => {
     setIsLoading(true);
     
-    // Simulate network request
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        // Check if email is already registered
-        const existingUser = MOCK_USERS.find(
-          (user) => user.email === email
-        );
-        
-        if (existingUser) {
-          setIsLoading(false);
-          reject(new Error('このメールアドレスは既に登録されています。'));
-          return;
-        }
-        
-        // Create new user
-        const newUser = {
-          id: String(MOCK_USERS.length + 1),
-          name,
-          email,
-          password,
-          role: 'user' as const
-        };
-        
-        // In a real app, this would be an API call to register the user
-        MOCK_USERS.push(newUser);
-        
-        // Log in the new user
-        const { password: _, ...userWithoutPassword } = newUser;
-        setCurrentUser(userWithoutPassword);
-        localStorage.setItem('lp_navigator_user', JSON.stringify(userWithoutPassword));
-        
-        setIsLoading(false);
-        resolve();
-      }, 1000);
-    });
+    try {
+      const { error } = await signUp(email, password, name);
+      
+      if (error) {
+        throw new Error(error.message || '登録に失敗しました。');
+      }
+      
+      // メール認証が必要なため、ここではログイン状態にしない
+      // ユーザーにメール確認を促す
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   // パスワードリセット機能
   const resetPassword = async (email: string): Promise<void> => {
     setIsLoading(true);
     
-    // Simulate network request
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        const foundUser = MOCK_USERS.find(
-          (user) => user.email === email
-        );
-        
-        if (foundUser) {
-          // In a real app, this would send a password reset email
-          console.log(`Password reset email sent to ${email}`);
-          setIsLoading(false);
-          resolve();
-        } else {
-          setIsLoading(false);
-          reject(new Error('このメールアドレスは登録されていません。'));
-        }
-      }, 1000);
-    });
-  };
-
-  // 自動ログイン機能（デモ用）
-  const autoLogin = (role: 'admin' | 'user' = 'user') => {
-    const demoUser = MOCK_USERS.find(user => user.role === role);
-    if (demoUser) {
-      const { password, ...userWithoutPassword } = demoUser;
-      setCurrentUser(userWithoutPassword);
-      localStorage.setItem('lp_navigator_user', JSON.stringify(userWithoutPassword));
+    try {
+      const { error } = await authResetPassword(email);
+      
+      if (error) {
+        throw new Error(error.message || 'パスワードリセットに失敗しました。');
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const logout = () => {
+  // 自動ログイン機能（デモ用 - Supabase環境では使用しない）
+  const autoLogin = (role: 'admin' | 'user' = 'user') => {
+    console.warn('autoLogin is not supported with Supabase Auth');
+  };
+
+  const logout = async () => {
+    const { error } = await signOut();
+    if (error) {
+      console.error('ログアウトエラー:', error);
+    }
     setCurrentUser(null);
-    localStorage.removeItem('lp_navigator_user');
-    // デモモードは維持
+    setSession(null);
   };
 
   const isAdmin = () => {
@@ -195,6 +237,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     autoLogin,
     register,
     resetPassword,
+    session,
+    authError,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

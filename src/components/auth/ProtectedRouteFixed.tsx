@@ -1,19 +1,19 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuthFixed } from '../../contexts/AuthContextFixed';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requiredRole: 'admin' | 'user';
 }
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
+const ProtectedRouteFixed: React.FC<ProtectedRouteProps> = ({ 
   children, 
   requiredRole 
 }) => {
-  const { currentUser, isLoading, isAdmin, authError } = useAuth();
+  const { currentUser, isLoading, isAdmin, authError } = useAuthFixed();
 
-  console.log('ProtectedRoute - Render:', {
+  console.log('ProtectedRouteFixed - Render:', {
     isLoading,
     currentUser: currentUser ? { id: currentUser.id, email: currentUser.email, role: currentUser.role } : null,
     requiredRole,
@@ -23,7 +23,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   });
 
   if (isLoading) {
-    console.log('ProtectedRoute - Loading state detected');
+    console.log('ProtectedRouteFixed - Loading state detected');
     return (
       <div className="flex justify-center items-center h-screen">
         <div className="text-center">
@@ -42,19 +42,19 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   if (!currentUser) {
-    console.log('ProtectedRoute - No user found, redirecting to login');
+    console.log('ProtectedRouteFixed - No user found, redirecting to login');
     return <Navigate to="/login" replace />;
   }
 
   // For admin routes, check if user is admin
   if (requiredRole === 'admin' && !isAdmin()) {
-    console.log('ProtectedRoute - Non-admin user trying to access admin route');
+    console.log('ProtectedRouteFixed - Non-admin user trying to access admin route');
     return <Navigate to="/generator" replace />;
   }
 
-  console.log('ProtectedRoute - Access granted');
+  console.log('ProtectedRouteFixed - Access granted');
   // For user routes, both admin and user can access
   return <>{children}</>;
 };
 
-export default ProtectedRoute;
+export default ProtectedRouteFixed;

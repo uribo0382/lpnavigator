@@ -181,22 +181,26 @@ const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
     }
     // 回答をセット
     setAnswers(initialAnswers);
-    // URLハッシュから質問ステップを設定
-    const hashIndex = parseActiveQuestion(window.location.hash);
-    setActiveQuestionIndex(hashIndex < questions.length ? hashIndex : 0);
-    // 履歴状態をクリア
-    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    // HashRouterを使用している場合は、ハッシュから質問番号を読み取らない
+    // const hashIndex = parseActiveQuestion(window.location.hash);
+    // setActiveQuestionIndex(hashIndex < questions.length ? hashIndex : 0);
+    
+    // 常に最初の質問から始める
+    setActiveQuestionIndex(0);
   }, []);
   
   // アクティブな質問が変更されたときにURLハッシュを更新
   useEffect(() => {
-    // ハッシュルーターでの競合を避けるため、質問番号のプレフィックスを変更
+    // HashRouterを使用している場合は、ハッシュの更新を無効化
+    // HashRouterでは#/pathの形式を使用するため、追加のハッシュフラグメントは競合する
+    // 代わりにクエリパラメータやstateを使用することを推奨
+    
+    // 以下のコードをコメントアウトして無効化
+    /*
     const newHash = `q-${activeQuestionIndex + 1}`;
     
-    // 直接window.hashを書き換えないように注意して処理
     if (!window.location.hash.includes(newHash)) {
       try {
-        // 部分的なハッシュ更新のためにURLSearchParamsを使用
         const url = new URL(window.location.href);
         url.hash = newHash;
         window.history.replaceState(null, '', url.toString());
@@ -204,6 +208,7 @@ const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
         console.error('Hash update error:', error);
       }
     }
+    */
   }, [activeQuestionIndex]);
 
   const currentQuestion = questions[activeQuestionIndex];

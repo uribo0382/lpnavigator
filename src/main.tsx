@@ -3,6 +3,14 @@ import ReactDOM from 'react-dom/client';
 import { HashRouter } from 'react-router-dom';
 import App from './App';
 import './index.css';
+import './utils/debugAuth';
+import './utils/quickDebug';
+import './lib/supabaseWithTimeout';
+import './utils/checkEnv';
+import './utils/testSupabaseDirectly';
+import './utils/createInitialUser';
+import './lib/supabaseNew';
+import './utils/forceCreateUser';
 
 // Windowインターフェースを拡張
 declare global {

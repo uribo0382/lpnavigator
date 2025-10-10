@@ -1,10 +1,14 @@
 import React from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { AuthProviderFixed } from './contexts/AuthContextFixed';
 import { ThemeProvider } from './contexts/ThemeContext';
 import LoginPage from './pages/LoginPage';
+import LoginPageFixed from './pages/LoginPageFixed';
 import SignupPage from './pages/SignupPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import ResetPasswordCallbackPage from './pages/ResetPasswordCallbackPage';
+import AuthCallbackPage from './pages/AuthCallbackPage';
 import ProfilePage from './pages/ProfilePage';
 import AdminDashboard from './pages/AdminDashboard';
 import QuestionsManagement from './pages/admin/QuestionsManagement';
@@ -25,7 +29,14 @@ import LpArticleDisplay from './pages/generator/LpArticleDisplay';
 import LpArticleHistory from './pages/generator/LpArticleHistory';
 import NotFound from './pages/NotFound';
 import Layout from './components/layout/Layout';
+import LayoutFixed from './components/layout/LayoutFixed';
+import LayoutSimple from './components/layout/LayoutSimple';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import ProtectedRouteFixed from './components/auth/ProtectedRouteFixed';
+import { SupabaseTestPage } from './pages/test/SupabaseTestPage';
+import { forceLogout } from './utils/forceLogout';
+import { debugAuthState } from './utils/debugAuthState';
+import { testAuthFlow, forceCreateProfile } from './utils/testAuthFlow';
 import './App.css';
 
 // グローバルエラーハンドラー
@@ -77,16 +88,33 @@ const RouteDebugger: React.FC = () => {
 
 // メインのアプリケーション
 function App() {
+  // デバッグ用：強制ログアウト機能を有効化
+  React.useEffect(() => {
+    (window as any).forceLogout = forceLogout;
+    (window as any).debugAuthState = debugAuthState;
+    (window as any).testAuthFlow = testAuthFlow;
+    (window as any).forceCreateProfile = forceCreateProfile;
+  }, []);
+  // 修正版のAuthContextを使用するかどうかのフラグ
+  const useFixedAuth = true; // これをtrueにすると修正版を使用
+  
+  const AuthProviderComponent = useFixedAuth ? AuthProviderFixed : AuthProvider;
+  const ProtectedRouteComponent = useFixedAuth ? ProtectedRouteFixed : ProtectedRoute;
+  const LoginPageComponent = useFixedAuth ? LoginPageFixed : LoginPage;
+  const LayoutComponent = useFixedAuth ? LayoutFixed : Layout; // 修正版のLayoutを使用
+  
   return (
     <ErrorBoundary>
-      <AuthProvider>
+      <AuthProviderComponent>
         <ThemeProvider>
           <RouteDebugger />
           <Routes>
-            <Route path="/login" element={<LoginPage />} />
+            <Route path="/login" element={<LoginPageComponent />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
-            <Route element={<Layout />}>
+            <Route path="/auth/callback" element={<AuthCallbackPage />} />
+            <Route path="/auth/reset-password" element={<ResetPasswordCallbackPage />} />
+            <Route element={<LayoutComponent />}>
               {/* ルートパスをジェネレーターにリダイレクト */}
               <Route path="/" element={<Navigate to="/generator" replace />} />
               
@@ -94,9 +122,9 @@ function App() {
               <Route
                 path="/profile"
                 element={
-                  <ProtectedRoute requiredRole="user">
+                  <ProtectedRouteComponent requiredRole="user">
                     <ProfilePage />
-                  </ProtectedRoute>
+                  </ProtectedRouteComponent>
                 }
               />
               
@@ -104,91 +132,91 @@ function App() {
               <Route
                 path="/admin"
                 element={
-                  <ProtectedRoute requiredRole="admin">
+                  <ProtectedRouteComponent requiredRole="admin">
                     <AdminDashboard />
-                  </ProtectedRoute>
+                  </ProtectedRouteComponent>
                 }
               />
               <Route
                 path="/admin/questions"
                 element={
-                  <ProtectedRoute requiredRole="admin">
+                  <ProtectedRouteComponent requiredRole="admin">
                     <QuestionsManagement />
-                  </ProtectedRoute>
+                  </ProtectedRouteComponent>
                 }
               />
               <Route
                 path="/admin/questions/new"
                 element={
-                  <ProtectedRoute requiredRole="admin">
+                  <ProtectedRouteComponent requiredRole="admin">
                     <QuestionEditor />
-                  </ProtectedRoute>
+                  </ProtectedRouteComponent>
                 }
               />
               <Route
                 path="/admin/questions/:id"
                 element={
-                  <ProtectedRoute requiredRole="admin">
+                  <ProtectedRouteComponent requiredRole="admin">
                     <QuestionEditor />
-                  </ProtectedRoute>
+                  </ProtectedRouteComponent>
                 }
               />
               {/* フォーミュラ管理ルート - 新規追加 */}
               <Route
                 path="/admin/formula/*"
                 element={
-                  <ProtectedRoute requiredRole="admin">
+                  <ProtectedRouteComponent requiredRole="admin">
                     <FormulaManagement />
-                  </ProtectedRoute>
+                  </ProtectedRouteComponent>
                 }
               />
               <Route
                 path="/admin/users"
                 element={
-                  <ProtectedRoute requiredRole="admin">
+                  <ProtectedRouteComponent requiredRole="admin">
                     <UsersManagement />
-                  </ProtectedRoute>
+                  </ProtectedRouteComponent>
                 }
               />
               <Route
                 path="/admin/users/new"
                 element={
-                  <ProtectedRoute requiredRole="admin">
+                  <ProtectedRouteComponent requiredRole="admin">
                     <UserEditor />
-                  </ProtectedRoute>
+                  </ProtectedRouteComponent>
                 }
               />
               <Route
                 path="/admin/users/:id"
                 element={
-                  <ProtectedRoute requiredRole="admin">
+                  <ProtectedRouteComponent requiredRole="admin">
                     <UserEditor />
-                  </ProtectedRoute>
+                  </ProtectedRouteComponent>
                 }
               />
               <Route
                 path="/admin/api-settings"
                 element={
-                  <ProtectedRoute requiredRole="admin">
+                  <ProtectedRouteComponent requiredRole="admin">
                     <ApiSettings />
-                  </ProtectedRoute>
+                  </ProtectedRouteComponent>
                 }
               />
               <Route
                 path="/admin/analytics"
                 element={
-                  <ProtectedRoute requiredRole="admin">
+                  <ProtectedRouteComponent requiredRole="admin">
                     <Analytics />
-                  </ProtectedRoute>
+                  </ProtectedRouteComponent>
                 }
               />
               {/* Fallback for unknown admin routes */}
               <Route
                 path="/admin/*"
                 element={
-                  <ProtectedRoute requiredRole="admin">
+                  <ProtectedRouteComponent requiredRole="admin">
                     <AdminDashboard />
-                  </ProtectedRoute>
+                  </ProtectedRouteComponent>
                 }
               />
               
@@ -196,9 +224,9 @@ function App() {
               <Route 
                 path="/generator" 
                 element={
-                  <ProtectedRoute requiredRole="user">
+                  <ProtectedRouteComponent requiredRole="user">
                     <ContentGenerator />
-                  </ProtectedRoute>
+                  </ProtectedRouteComponent>
                 } 
               />
               
@@ -206,18 +234,18 @@ function App() {
               <Route 
                 path="/generator/content" 
                 element={
-                  <ProtectedRoute requiredRole="user">
+                  <ProtectedRouteComponent requiredRole="user">
                     <GeneratedContent />
-                  </ProtectedRoute>
+                  </ProtectedRouteComponent>
                 } 
               />
               
               <Route 
                 path="/generator/history" 
                 element={
-                  <ProtectedRoute requiredRole="user">
+                  <ProtectedRouteComponent requiredRole="user">
                     <ContentHistory />
-                  </ProtectedRoute>
+                  </ProtectedRouteComponent>
                 } 
               />
 
@@ -225,27 +253,27 @@ function App() {
               <Route 
                 path="/generator/adcopy" 
                 element={
-                  <ProtectedRoute requiredRole="user">
+                  <ProtectedRouteComponent requiredRole="user">
                     <AdCopyDisplay />
-                  </ProtectedRoute>
+                  </ProtectedRouteComponent>
                 } 
               />
 
               <Route 
                 path="/generator/adcopy/create" 
                 element={
-                  <ProtectedRoute requiredRole="user">
+                  <ProtectedRouteComponent requiredRole="user">
                     <AdCopyGenerator />
-                  </ProtectedRoute>
+                  </ProtectedRouteComponent>
                 } 
               />
 
               <Route 
                 path="/generator/adcopy/history" 
                 element={
-                  <ProtectedRoute requiredRole="user">
+                  <ProtectedRouteComponent requiredRole="user">
                     <AdCopyHistory />
-                  </ProtectedRoute>
+                  </ProtectedRouteComponent>
                 } 
               />
               
@@ -253,36 +281,39 @@ function App() {
               <Route 
                 path="/generator/lparticle" 
                 element={
-                  <ProtectedRoute requiredRole="user">
+                  <ProtectedRouteComponent requiredRole="user">
                     <LpArticleDisplay />
-                  </ProtectedRoute>
+                  </ProtectedRouteComponent>
                 } 
               />
 
               <Route 
                 path="/generator/lparticle/create" 
                 element={
-                  <ProtectedRoute requiredRole="user">
+                  <ProtectedRouteComponent requiredRole="user">
                     <LpArticleGenerator />
-                  </ProtectedRoute>
+                  </ProtectedRouteComponent>
                 } 
               />
 
               <Route 
                 path="/generator/lparticle/history" 
                 element={
-                  <ProtectedRoute requiredRole="user">
+                  <ProtectedRouteComponent requiredRole="user">
                     <LpArticleHistory />
-                  </ProtectedRoute>
+                  </ProtectedRouteComponent>
                 } 
               />
             </Route>
+            
+            {/* Supabaseテストページ（開発環境のみ） */}
+            <Route path="/test/supabase" element={<SupabaseTestPage />} />
             
             {/* 404ページ */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </ThemeProvider>
-      </AuthProvider>
+      </AuthProviderComponent>
     </ErrorBoundary>
   );
 }

@@ -15,6 +15,7 @@ const SignupPage: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isRegistered, setIsRegistered] = useState(false);
 
   // すでにログインしている場合はリダイレクト
   useEffect(() => {
@@ -71,12 +72,8 @@ const SignupPage: React.FC = () => {
 
     try {
       await register(name, email, password);
-      try {
-        navigate('/generator', { replace: true });
-      } catch (error) {
-        console.error('Navigation error:', error);
-        window.location.href = '/generator';
-      }
+      // 登録成功後、メール確認メッセージを表示
+      setIsRegistered(true);
     } catch (err: any) {
       setError(err.message || 'ユーザー登録に失敗しました。');
     }
@@ -88,6 +85,41 @@ const SignupPage: React.FC = () => {
         <div className="p-8 rounded-lg border border-gray-200 bg-white shadow-lg w-full max-w-md text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto"></div>
           <p className="mt-4 text-gray-600">読み込み中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // メール確認画面を表示
+  if (isRegistered) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <div className="w-full max-w-md bg-white shadow-lg rounded-lg border border-gray-200 p-8">
+          <div className="text-center">
+            <div className="mb-4">
+              <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">登録が完了しました</h2>
+            <p className="text-gray-600 mb-6">
+              確認メールを <strong>{email}</strong> に送信しました。<br />
+              メール内のリンクをクリックして、アカウントを有効化してください。
+            </p>
+            <div className="space-y-4">
+              <p className="text-sm text-gray-500">
+                メールが届かない場合は、迷惑メールフォルダをご確認ください。
+              </p>
+              <Link 
+                to="/login" 
+                className="block w-full py-2 px-4 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors text-center"
+              >
+                ログインページへ
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     );
