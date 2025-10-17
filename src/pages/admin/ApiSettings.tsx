@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Save, RefreshCw } from 'lucide-react';
+import { Save, RefreshCw, TestTube } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import Input from '../../components/ui/Input';
@@ -17,6 +18,7 @@ interface ApiForm {
 }
 
 const ApiSettings: React.FC = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState<ApiForm>({
     selectedModel: 'gpt-4o',
     openaiApiKey: 'sk-*****************************',
@@ -167,23 +169,33 @@ const ApiSettings: React.FC = () => {
             </div>
           )}
 
-          <div className="flex justify-end space-x-3 pt-4">
+          <div className="flex justify-between pt-4">
             <Button
               type="button"
-              variant="outline"
-              leftIcon={<RefreshCw size={16} />}
-              onClick={handleTestConnection}
-              isLoading={isLoading}
+              variant="secondary"
+              leftIcon={<TestTube size={16} />}
+              onClick={() => navigate('/admin/api-test')}
             >
-              接続テスト
+              詳細なAPIテスト
             </Button>
-            <Button
-              type="submit"
-              leftIcon={<Save size={16} />}
-              isLoading={isLoading}
-            >
-              設定を保存
-            </Button>
+            <div className="flex space-x-3">
+              <Button
+                type="button"
+                variant="outline"
+                leftIcon={<RefreshCw size={16} />}
+                onClick={handleTestConnection}
+                isLoading={isLoading}
+              >
+                接続テスト
+              </Button>
+              <Button
+                type="submit"
+                leftIcon={<Save size={16} />}
+                isLoading={isLoading}
+              >
+                設定を保存
+              </Button>
+            </div>
           </div>
         </form>
       </Card>

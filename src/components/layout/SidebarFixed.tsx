@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { Home, Settings, Users, FileText, List, BarChart, ChevronRight, ChevronDown, History, Clock, X, BookTemplate, MessageSquare, BrainCircuit, NotebookText, Megaphone, FileEdit, ChevronLeft, ChevronLeftSquare, ChevronRightSquare, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Home, Settings, Users, FileText, List, BarChart, ChevronRight, ChevronDown, History, Clock, X, BookTemplate, MessageSquare, BrainCircuit, NotebookText, Megaphone, FileEdit, ChevronLeft, ChevronLeftSquare, ChevronRightSquare, PanelLeftClose, PanelLeftOpen, TestTube } from 'lucide-react';
 import { useAuthFixed } from '../../contexts/AuthContextFixed';
 import ConfirmDialog from '../ui/ConfirmDialog';
 
@@ -601,6 +601,37 @@ const SidebarFixed: React.FC<SidebarProps> = ({
                       title="分析"
                     >
                       <BarChart size={18} />
+                    </button>
+                  </div>
+                )}
+              </li>
+
+              <li>
+                {!isSidebarCollapsed ? (
+                  <NavLink
+                    to="/admin/api-test"
+                    onClick={(e) => handleAdminMenuClick(e, '/admin/api-test')}
+                    className={({ isActive }) => 
+                      `flex items-center px-3 py-2 rounded-md text-sm font-medium ${
+                        isActive ? 'bg-primary-50 text-primary-600' : 'text-gray-700 hover:bg-gray-100'
+                      }`
+                    }
+                  >
+                    <TestTube size={18} className="mr-3" />
+                    APIテスト
+                  </NavLink>
+                ) : (
+                  <div className="flex justify-center w-full">
+                    <button
+                      className="p-2 rounded-md hover:bg-gray-100"
+                      onClick={() => {
+                        if (confirmNavigation('/admin/api-test')) {
+                          safeNavigate('/admin/api-test');
+                        }
+                      }}
+                      title="APIテスト"
+                    >
+                      <TestTube size={18} />
                     </button>
                   </div>
                 )}

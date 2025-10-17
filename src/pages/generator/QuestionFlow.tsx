@@ -8,6 +8,8 @@ import Select from '../../components/ui/Select';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import BasicInfoReview from './BasicInfoReview';
 import { mockQuestions } from '../../utils/mockData';
+import { generateBasicInfo } from '../../services/contentGenerator';
+import type { AIProvider } from '../../services/ai';
 
 interface QuestionFlowProps {
   onContentGenerated: (content: {
@@ -20,10 +22,15 @@ interface QuestionFlowProps {
 }
 
 const modelOptions = [
-  { value: 'gpt-4o', label: 'GPT-4o (OpenAI)' },
-  { value: 'gpt-4-turbo', label: 'GPT-4 Turbo (OpenAI)' },
-  { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo (OpenAI)' },
-  { value: 'claude-3-opus', label: 'Claude 3 Opus (Anthropic)' },
+  { value: 'openai:gpt-5-pro', label: 'GPT-5 Pro (OpenAI) - 有料' },
+  { value: 'openai:gpt-5', label: 'GPT-5 (OpenAI) - 有料' },
+  { value: 'openai:gpt-4o-mini', label: 'GPT-4o Mini (OpenAI) - 有料' },
+  { value: 'openai:gpt-4.1', label: 'GPT-4.1 (OpenAI) - 有料' },
+  { value: 'openai:gpt-4.1-nano', label: 'GPT-4.1 Nano (OpenAI) - 有料' },
+  { value: 'openai:gpt-audio-mini', label: 'GPT-Audio Mini (OpenAI) - 有料' },
+  { value: 'anthropic:claude-3-5-sonnet-latest', label: 'Claude 3.5 Sonnet (Anthropic) - 有料' },
+  { value: 'anthropic:claude-3-5-haiku-latest', label: 'Claude 3.5 Haiku (Anthropic) - 有料' },
+  { value: 'google:gemini-2.0-flash', label: 'Gemini 2.0 Flash (Google) - 無料' },
 ];
 
 // アクティブな質問のインデックスを解析するヘルパー関数
@@ -75,7 +82,7 @@ const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('gpt-4o');
+  const [selectedModel, setSelectedModel] = useState('openai:gpt-4o-mini');
   const [questions] = useState<Question[]>(() => {
     const processedQuestions = mockQuestions
       .map(q => ({
@@ -337,66 +344,33 @@ const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
   };
 
   // LP記事生成ロジックの修正版
-  const executeGenerateContent = () => {
+  const executeGenerateContent = async () => {
     setIsGenerating(true);
     setGenerationComplete(false);
     setAnimationProgress(0);
     setShowCompletedAnimation(false);
     
-    // Simulate API call to generate content
-    setTimeout(() => {
-      const sampleContent = {
-        title: "あなたの問題を解決する究極のソリューション",
-        content: `<h1>あなたの問題を解決する究極のソリューション</h1>
-        <p>毎日の悩みから解放されたいと思ったことはありませんか？多くの人が同じ問題に直面していますが、その解決策を見つけるのは容易ではありません。</p>
+    try {
+      // モデル選択から provider と model を分離
+      const [provider, model] = selectedModel.split(':') as [AIProvider, string];
+      
+      // AI APIを使用してコンテンツを生成
+      const generatedContent = await generateBasicInfo({
+        answers,
+        questions: questions.map(q => ({
+          id: q.id,
+          text: q.text,
+          category: q.category
+        })),
+        provider,
+        model
+      });
 
-        <h2>あなたが直面している問題</h2>
-        <p>${answers['9'] || '多くの人々は日々のストレスや効率の悪さに悩まされています。'}</p>
-
-        <h2>私たちの商品について</h2>
-        <p>${answers['1'] || '当社の革新的な商品は、最新技術と使いやすさを組み合わせて設計されています。'}</p>
-
-        <h3>商品の主な特徴</h3>
-        <ul>
-          <li>${answers['2'] || '使いやすいインターフェース'}</li>
-          <li>時間節約</li>
-          <li>高品質な結果</li>
-        </ul>
-
-        <h2>お客様の声</h2>
-        <blockquote>
-          「${answers['6'] || 'この商品を使い始めてから、生活が一変しました。もっと早く知っていれば良かったです！'}」
-          <cite>- 満足したお客様</cite>
-        </blockquote>
-
-        <h2>競合製品との違い</h2>
-        <p>${answers['12'] || '当社の製品は、競合他社の製品と比較して、より使いやすく、より多くの機能を提供しています。'}</p>
-
-        <h2>得られる結果</h2>
-        <p>${answers['13'] || '当社の製品を使用することで、効率が向上し、ストレスが軽減され、より良い結果を得ることができます。'}</p>
-
-        <h2>今すぐ行動しましょう</h2>
-        <p>${answers['4'] || '限定オファーをお見逃しなく！今なら特別価格でご提供中です。'}</p>
-
-        <p>${answers['3'] || '今すぐ注文して、あなたの生活を変えましょう。'}</p>
-
-        <div class="cta-box">
-          <h3>特別オファー</h3>
-          <p>${answers['5'] || 'この特別オファーは期間限定です。すぐにご購入ください！'}</p>
-          <p>${answers['7'] || '今すぐ購入すると、特別な特典が付いてきます！'}</p>
-          <button class="cta-button">今すぐ購入</button>
-        </div>`,
-        metaDescription: `${answers['9'] ? answers['9'].substring(0, 50) + '...' : '問題解決の商品で日常の問題を解決。効率的で使いやすい当社の製品があなたの生活を向上させます。'}`,
-        permalink: "best-product-ultimate-solution",
-        createdAt: new Date()
-      };
-
-      // onContentGenerated(sampleContent); // ここでは実行せず、データを保存
       // 生成完了状態にする
       setGenerationComplete(true);
       
       // カスタムイベントで生成完了データを保存
-      (window as any).generatedContent = sampleContent;
+      (window as any).generatedContent = generatedContent;
       
       // アニメーションが完了していない場合は、アニメーション完了を待つ
       // アニメーション側の useEffect で completeGenerationAndNavigate() が呼ばれる
@@ -405,7 +379,12 @@ const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
         // アニメーションが既に完了している場合は遷移
         completeGenerationAndNavigate();
       }
-    }, 3000);
+    } catch (error) {
+      console.error('コンテンツ生成エラー:', error);
+      setIsGenerating(false);
+      setAlertMessage('コンテンツの生成に失敗しました。もう一度お試しください。');
+      setShowAlertDialog(true);
+    }
   };
   
   // 生成完了して遷移する関数

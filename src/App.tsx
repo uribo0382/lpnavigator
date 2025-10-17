@@ -34,6 +34,8 @@ import LayoutSimple from './components/layout/LayoutSimple';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import ProtectedRouteFixed from './components/auth/ProtectedRouteFixed';
 import { SupabaseTestPage } from './pages/test/SupabaseTestPage';
+import ApiTest from './pages/admin/ApiTest';
+import ApiTestDebug from './pages/admin/ApiTestDebug';
 import { forceLogout } from './utils/forceLogout';
 import { debugAuthState } from './utils/debugAuthState';
 import { testAuthFlow, forceCreateProfile } from './utils/testAuthFlow';
@@ -207,6 +209,22 @@ function App() {
                 element={
                   <ProtectedRouteComponent requiredRole="admin">
                     <Analytics />
+                  </ProtectedRouteComponent>
+                }
+              />
+              <Route
+                path="/admin/api-test"
+                element={
+                  <ProtectedRouteComponent requiredRole="admin">
+                    <ApiTest />
+                  </ProtectedRouteComponent>
+                }
+              />
+              <Route
+                path="/admin/api-debug"
+                element={
+                  <ProtectedRouteComponent requiredRole="admin">
+                    <ApiTestDebug />
                   </ProtectedRouteComponent>
                 }
               />
