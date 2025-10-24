@@ -12,6 +12,8 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   isAdmin: () => boolean;
+  register: (name: string, email: string, password: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
 }
 
 // コンテキストの作成
@@ -168,6 +170,56 @@ export const AuthProviderFixed: React.FC<AuthProviderProps> = ({ children }) => 
     return currentUser?.role === 'admin';
   };
 
+  // ユーザー登録機能
+  const register = async (name: string, email: string, password: string): Promise<void> => {
+    setIsLoading(true);
+    setAuthError(null);
+    
+    try {
+      // 1. ユーザー登録
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name: name,
+          }
+        }
+      });
+
+      if (error) throw error;
+      
+      // メール認証が必要なため、ここではログイン状態にしない
+      // ユーザーにメール確認を促す
+    } catch (error: any) {
+      console.error('登録エラー:', error);
+      setAuthError(error.message || '登録に失敗しました');
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // パスワードリセット機能
+  const resetPassword = async (email: string): Promise<void> => {
+    setIsLoading(true);
+    setAuthError(null);
+    
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      
+      if (error) throw error;
+      
+      // リセットメールが送信された
+    } catch (error: any) {
+      console.error('パスワードリセットエラー:', error);
+      setAuthError(error.message || 'パスワードリセットに失敗しました');
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const value = {
     currentUser,
     isLoading,
@@ -175,6 +227,8 @@ export const AuthProviderFixed: React.FC<AuthProviderProps> = ({ children }) => 
     login,
     logout,
     isAdmin,
+    register,
+    resetPassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -188,3 +242,6 @@ export const useAuthFixed = () => {
   }
   return context;
 };
+
+// 互換性のためuseAuthとしてもエクスポート
+export const useAuth = useAuthFixed;
