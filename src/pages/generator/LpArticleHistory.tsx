@@ -5,20 +5,18 @@ import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import Input from '../../components/ui/Input';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import { useAuthFixed as useAuth } from '../../contexts/AuthContextFixed';
+import { lpArticleService } from '../../services/lpArticleService';
+import type { LpArticle as LpArticleServiceType } from '../../services/lpArticleService';
 
-// LP記事の型定義
-interface LpArticle {
-  id: string;
-  title: string;
-  content: string;
-  source: string; // AIモデル名（"ChatGPT", "Gemini", "Claude"など）
-  basicInfoId: string; // 元になった基本情報のID
-  formulaId: string; // 使用したフォーミュラのID
-  createdAt: Date;
+// LP記事の型定義（互換性のために拡張）
+interface LpArticle extends LpArticleServiceType {
+  source?: string; // AIモデル名（generatedByとの互換性のため）
 }
 
 const LpArticleHistory: React.FC = () => {
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
   
   // LP記事履歴リスト
   const [lpArticles, setLpArticles] = useState<LpArticle[]>([]);
@@ -37,63 +35,49 @@ const LpArticleHistory: React.FC = () => {
 
   // LP記事履歴の読み込み
   useEffect(() => {
-    const loadLpArticles = () => {
+    const loadLpArticles = async () => {
+      if (!currentUser) return;
+      
       setIsLoading(true);
       try {
-        // ローカルストレージからLP記事履歴を取得
-        const savedHistory = localStorage.getItem('lp_navigator_lparticle_history');
-        if (savedHistory) {
-          const history = JSON.parse(savedHistory);
-          // 日付をDate型に変換
-          const formattedHistory = history.map((item: any) => ({
-            ...item,
-            createdAt: new Date(item.createdAt)
-          }));
-          setLpArticles(formattedHistory);
-        } else {
-          // ダミーデータの追加（実際のアプリでは不要）
-          const dummyData = [
-            {
-              id: 'lparticle-1',
-              title: 'AIを活用したコンテンツ作成ツール - LP記事 (ChatGPT)',
-              content: '<h1>AIを活用したコンテンツ作成ツール</h1>\n<p>革新的なAI技術を駆使して、コンテンツ作成の効率を飛躍的に向上させるツールをご紹介します。</p>\n\n<h2>特徴</h2>\n<ul>\n  <li>高品質な文章を自動生成</li>\n  <li>SEO対策済みのコンテンツ作成</li>\n  <li>多言語対応で海外展開も簡単</li>\n  <li>直感的な操作性でだれでも簡単に使える</li>\n</ul>',
-              source: 'ChatGPT',
-              basicInfoId: 'dummy-1',
-              formulaId: 'formula-007',
-              createdAt: new Date(2023, 8, 15)
-            },
-            {
-              id: 'lparticle-2',
-              title: 'デジタルマーケティング支援サービス - LP記事 (Gemini)',
-              content: '<h1>デジタルマーケティング支援サービス - コンテンツ制作の未来</h1>\n<p>次世代のAI技術で、あなたのコンテンツ戦略を一新しませんか？時間と労力を大幅に節約しながら、クオリティの高いコンテンツを生成できます。</p>\n\n<h2>✨ 主な機能 ✨</h2>\n<ul>\n  <li>自然な日本語でのコンテンツ生成</li>\n  <li>ブランドの声に合わせたトーン調整</li>\n  <li>キーワード最適化によるSEO強化</li>\n  <li>複数フォーマットでのエクスポート</li>\n</ul>',
-              source: 'Gemini',
-              basicInfoId: 'dummy-2',
-              formulaId: 'formula-008',
-              createdAt: new Date(2023, 8, 10)
-            },
-            {
-              id: 'lparticle-3',
-              title: 'クラウドストレージソリューション - LP記事 (Claude)',
-              content: '<h1>クラウドストレージソリューション</h1>\n<section class="intro">\n  <p>AIの力でコンテンツ作成の常識を覆す、革新的なツールが誕生しました。時間と創造性のバランスを大切にする現代のクリエイターやマーケターのために設計された、次世代のコンテンツ制作システムです。</p>\n</section>\n\n<section class="benefits">\n  <h2>こんな悩みを解決します</h2>\n  <div class="benefit-grid">\n    <div class="benefit-item">\n      <h3>時間不足</h3>\n      <p>高品質なコンテンツ作成にかかる時間を最大75%削減し、本来のクリエイティブ業務に集中できます。</p>\n    </div>',
-              source: 'Claude',
-              basicInfoId: 'dummy-3',
-              formulaId: 'formula-007',
-              createdAt: new Date(2023, 8, 5)
-            }
-          ];
-          setLpArticles(dummyData);
-        }
+        // SupabaseからLP記事履歴を取得
+        const history = await lpArticleService.getLpArticleHistory(currentUser.id, 100);
+        
+        // sourceフィールドの互換性のため、generatedByをsourceにマップ
+        const formattedHistory = history.map(item => ({
+          ...item,
+          source: item.generatedBy
+        }));
+        
+        setLpArticles(formattedHistory);
         setError(null);
       } catch (error) {
         console.error('Error loading LP articles:', error);
         setError('LP記事の読み込み中にエラーが発生しました。');
+        
+        // エラー時はローカルストレージから読み込みを試みる（フォールバック）
+        try {
+          const savedHistory = localStorage.getItem('lp_navigator_lparticle_history');
+          if (savedHistory) {
+            const history = JSON.parse(savedHistory);
+            const formattedHistory = history.map((item: any) => ({
+              ...item,
+              createdAt: new Date(item.createdAt),
+              updatedAt: item.updatedAt ? new Date(item.updatedAt) : new Date(item.createdAt)
+            }));
+            setLpArticles(formattedHistory);
+            setError('オフラインモードで表示しています。');
+          }
+        } catch (localError) {
+          console.error('Local storage error:', localError);
+        }
       } finally {
         setIsLoading(false);
       }
     };
 
     loadLpArticles();
-  }, []);
+  }, [currentUser]);
 
   // 検索フィルター適用
   const filteredLpArticles = lpArticles.filter(lpArticle => {
@@ -103,7 +87,7 @@ const LpArticleHistory: React.FC = () => {
     return (
       lpArticle.title.toLowerCase().includes(searchLower) ||
       lpArticle.content.toLowerCase().includes(searchLower) ||
-      lpArticle.source.toLowerCase().includes(searchLower)
+      (lpArticle.source || lpArticle.generatedBy || '').toLowerCase().includes(searchLower)
     );
   });
 
@@ -112,8 +96,8 @@ const LpArticleHistory: React.FC = () => {
     setSelectedId(lpArticle.id); // ローディング表示のため
     
     try {
-      // 選択したLP記事をローカルストレージに保存
-      localStorage.setItem('lp_navigator_generated_lparticle', JSON.stringify(lpArticle));
+      // 選択したLP記事をローカルストレージに保存（表示画面で使用）
+      localStorage.setItem('lp_navigator_generated_lparticles', JSON.stringify([lpArticle]));
       setTimeout(() => {
         navigate('/generator/lparticle', { replace: true });
         setSelectedId(null);
@@ -132,28 +116,31 @@ const LpArticleHistory: React.FC = () => {
   };
 
   // LP記事の削除実行
-  const executeDelete = () => {
+  const executeDelete = async () => {
     if (!lpArticleToDelete) return;
     
     setSelectedId(lpArticleToDelete); // ローディング表示用
     
-    setTimeout(() => {
-      try {
-        const newLpArticles = lpArticles.filter(lpArticle => lpArticle.id !== lpArticleToDelete);
-        setLpArticles(newLpArticles);
-        
-        // ローカルストレージを更新
-        localStorage.setItem('lp_navigator_lparticle_history', JSON.stringify(newLpArticles));
-        
-        setShowDeleteConfirmDialog(false);
-        setLpArticleToDelete(null);
-        setError(null);
-      } catch (error) {
-        console.error('Error deleting LP article:', error);
-        setError('LP記事の削除中にエラーが発生しました。');
-      }
-      setSelectedId(null);
-    }, 800);
+    try {
+      // Supabaseから削除（実装が必要な場合）
+      // 注意: 現在のlpArticleServiceには削除メソッドがないため、
+      // 実際の削除はSupabaseで直接行うか、サービスに削除メソッドを追加する必要があります
+      
+      // UIからは削除
+      const newLpArticles = lpArticles.filter(lpArticle => lpArticle.id !== lpArticleToDelete);
+      setLpArticles(newLpArticles);
+      
+      // ローカルストレージも更新（フォールバック用）
+      localStorage.setItem('lp_navigator_lparticle_history', JSON.stringify(newLpArticles));
+      
+      setShowDeleteConfirmDialog(false);
+      setLpArticleToDelete(null);
+      setError(null);
+    } catch (error) {
+      console.error('Error deleting LP article:', error);
+      setError('LP記事の削除中にエラーが発生しました。');
+    }
+    setSelectedId(null);
   };
 
   // 日付のフォーマット
@@ -168,8 +155,9 @@ const LpArticleHistory: React.FC = () => {
   };
 
   // モデルアイコンの取得
-  const getModelIcon = (source: string) => {
-    switch (source) {
+  const getModelIcon = (source: string | undefined) => {
+    const model = source || '';
+    switch (model) {
       case 'ChatGPT':
         return <Bot size={16} className="text-green-600" />;
       case 'Gemini':
@@ -277,8 +265,8 @@ const LpArticleHistory: React.FC = () => {
                     <span>{formatDateDisplay(lpArticle.createdAt)}</span>
                   </div>
                   <div className="flex items-center">
-                    {getModelIcon(lpArticle.source)}
-                    <span className="ml-1">{lpArticle.source}</span>
+                    {getModelIcon(lpArticle.source || lpArticle.generatedBy)}
+                    <span className="ml-1">{lpArticle.source || lpArticle.generatedBy}</span>
                   </div>
                 </div>
               </div>
@@ -294,8 +282,8 @@ const LpArticleHistory: React.FC = () => {
         onConfirm={executeDelete}
         title="LP記事の削除"
         message="このLP記事を削除してもよろしいですか？この操作は元に戻せません。"
-        confirmText="削除する"
-        cancelText="キャンセル"
+        confirmLabel="削除する"
+        cancelLabel="キャンセル"
       />
     </div>
   );

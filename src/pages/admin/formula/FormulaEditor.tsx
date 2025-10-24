@@ -10,10 +10,13 @@ interface FormulaEditorProps {
     type: string;
     template: string;
     variables: string[];
-    isActive: boolean;
-    createdAt?: Date;
-    updatedAt?: Date;
-    summary?: string;
+    is_active?: boolean;
+    isActive?: boolean; // 後方互換性のため
+    created_at?: string;
+    updated_at?: string;
+    createdAt?: Date; // 後方互換性のため
+    updatedAt?: Date; // 後方互換性のため
+    summary?: string | null;
   } | null;
   formulaType: 'question' | 'basic_info' | 'ad_copy' | 'lp_article';
   onSave: (formula: any) => void;
@@ -38,7 +41,7 @@ const FormulaEditor: React.FC<FormulaEditorProps> = ({
     if (formula) {
       setName(formula.name);
       setTemplate(formula.template);
-      setIsActive(formula.isActive);
+      setIsActive(formula.is_active ?? formula.isActive ?? true);
       setVariables(formula.variables);
       setSummary(formula.summary || '');
     } else {
@@ -92,6 +95,7 @@ const FormulaEditor: React.FC<FormulaEditorProps> = ({
           template, 
           variables, 
           isActive,
+          is_active: isActive, // Supabaseフィールド
           summary,
           updatedAt: new Date() 
         } 
@@ -101,6 +105,7 @@ const FormulaEditor: React.FC<FormulaEditorProps> = ({
           template, 
           variables, 
           isActive,
+          is_active: isActive, // Supabaseフィールド
           summary,
           createdAt: new Date(),
           updatedAt: new Date()

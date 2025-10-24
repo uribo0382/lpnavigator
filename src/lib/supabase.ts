@@ -38,6 +38,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 console.log('Supabase Client initialized:', {
   url: supabaseUrl,
   hasAnonKey: !!supabaseAnonKey,
+  urlLength: supabaseUrl?.length,
+  keyLength: supabaseAnonKey?.length,
   timestamp: new Date().toISOString(),
 });
 
@@ -255,6 +257,11 @@ export type Database = {
           summary: string | null;
           generated_by: string | null;
           formula_id: string | null;
+          meta_description: string | null;
+          permalink: string | null;
+          word_count: number | null;
+          status: string;
+          progress: number;
           created_at: string;
           updated_at: string;
         };
@@ -267,6 +274,11 @@ export type Database = {
           summary?: string | null;
           generated_by?: string | null;
           formula_id?: string | null;
+          meta_description?: string | null;
+          permalink?: string | null;
+          word_count?: number | null;
+          status?: string;
+          progress?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -279,6 +291,11 @@ export type Database = {
           summary?: string | null;
           generated_by?: string | null;
           formula_id?: string | null;
+          meta_description?: string | null;
+          permalink?: string | null;
+          word_count?: number | null;
+          status?: string;
+          progress?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -482,6 +499,41 @@ export type Database = {
           created_at?: string;
         };
       };
+      saved_contents: {
+        Row: {
+          id: string;
+          user_id: string;
+          title: string;
+          content_type: string;
+          progress: number;
+          answers: any;
+          session_data: any;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          title: string;
+          content_type?: string;
+          progress?: number;
+          answers: any;
+          session_data?: any;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          title?: string;
+          content_type?: string;
+          progress?: number;
+          answers?: any;
+          session_data?: any;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
     };
   };
 };
@@ -489,14 +541,43 @@ export type Database = {
 // 接続テスト用のヘルパー関数
 export async function testSupabaseConnection(): Promise<boolean> {
   try {
-    const { data, error } = await supabase.from('_prisma_migrations').select('id').limit(1);
-    if (error && error.code !== 'PGRST116') {
+    console.log('Testing Supabase connection...');
+    // まず、現在の認証状態を確認
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log('Current auth session:', session ? 'Active' : 'None');
+    
+    // usersテーブルへのアクセスをテスト
+    const { data, error } = await supabase.from('users').select('id').limit(1);
+    if (error) {
       console.error('Supabase connection error:', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        statusCode: error.statusCode
+      });
       return false;
     }
+    console.log('Supabase connection successful, test data:', data);
     return true;
   } catch (error) {
     console.error('Supabase connection error:', error);
     return false;
+  }
+}
+
+// セッションをリフレッシュする関数
+export async function refreshSession() {
+  try {
+    const { data: { session }, error } = await supabase.auth.refreshSession();
+    if (error) {
+      console.error('Session refresh error:', error);
+      throw error;
+    }
+    return session;
+  } catch (error) {
+    console.error('Session refresh failed:', error);
+    throw error;
   }
 }

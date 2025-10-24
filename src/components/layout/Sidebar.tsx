@@ -366,6 +366,19 @@ const Sidebar: React.FC<SidebarProps> = ({ onCloseMobileMenu, isSidebarCollapsed
               <ul className="mt-1 pl-10 space-y-1">
                 <li>
                   <NavLink
+                    to="/generator/lparticle/create"
+                    className={({ isActive }) => 
+                      `flex items-center px-3 py-1.5 text-sm rounded-md ${
+                        isActive ? 'bg-primary-50 text-primary-600' : 'text-gray-600 hover:bg-gray-50'
+                      }`
+                    }
+                  >
+                    <FileEdit size={16} className="mr-2" />
+                    LP記事作成
+                  </NavLink>
+                </li>
+                <li>
+                  <NavLink
                     to="/generator/lparticle/history"
                     className={({ isActive }) => 
                       `flex items-center px-3 py-1.5 text-sm rounded-md ${
@@ -537,6 +550,8 @@ const Sidebar: React.FC<SidebarProps> = ({ onCloseMobileMenu, isSidebarCollapsed
                 )}
               </li>
 
+              {/* API設定、分析、APIテストは一時的に非表示 */}
+              {/* 
               <li>
                 {!isSidebarCollapsed ? (
                   <NavLink
@@ -598,6 +613,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onCloseMobileMenu, isSidebarCollapsed
                   </div>
                 )}
               </li>
+              */}
             </>
           )}
         </ul>

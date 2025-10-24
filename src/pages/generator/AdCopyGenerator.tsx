@@ -4,44 +4,15 @@ import { Loader2, Bot, Zap, Sparkles, ArrowLeft, RefreshCw, Copy, Check, Edit, S
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import Select from '../../components/ui/Select';
-import { mockFormulas } from '../../utils/mockData';
+import { useAuthFixed as useAuth } from '../../contexts/AuthContextFixed';
+import { adCopyService } from '../../services/adCopyService';
 
-// 基本情報の型定義
-interface BasicInfo {
-  id: string;
-  title: string;
-  content: string;
-  metaDescription: string;
-  permalink: string;
-  createdAt: Date;
-}
-
-// 広告文フォーミュラの型定義
-interface AdCopyFormula {
-  id: string;
-  name: string;
-  type: string;
-  template: string;
-  variables: string[];
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  summary?: string;
-}
-
-// 広告文の型定義
-interface AdCopy {
-  id: string;
-  title: string;
-  content: string;
-  source: string; // AIモデル名
-  basicInfoId: string;
-  formulaId: string;
-  createdAt: Date;
-}
+// 型定義はadCopyServiceから取得
+import type { BasicInfo, AdCopyFormula, AdCopy } from '../../services/adCopyService';
 
 const AdCopyGenerator: React.FC = () => {
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
   
   // 基本情報のリスト
   const [basicInfoList, setBasicInfoList] = useState<BasicInfo[]>([]);
@@ -70,183 +41,47 @@ const AdCopyGenerator: React.FC = () => {
 
   // 基本情報とフォーミュラの読み込み
   useEffect(() => {
-    // 基本情報のローカルストレージからの読み込み
-    const loadBasicInfo = () => {
+    if (!currentUser) return;
+    
+    // 基本情報の読み込み（Supabaseから）
+    const loadBasicInfo = async () => {
       try {
-        // 実際のアプリケーションではAPIから取得するなど
-        // ここではデモ用にローカルストレージから取得
-        const savedContent = localStorage.getItem('lp_navigator_generated_content');
-        const savedContents = localStorage.getItem('lp_navigator_content_history');
+        // Supabaseから基本情報を取得
+        const basicInfos = await adCopyService.getBasicInfos(currentUser.id);
         
-        const basicInfoItems: BasicInfo[] = [];
-        
-        if (savedContent) {
-          try {
-            const parsedContent = JSON.parse(savedContent);
-            parsedContent.createdAt = new Date(parsedContent.createdAt);
-            basicInfoItems.push(parsedContent);
-          } catch (e) {
-            console.error('Failed to parse saved content:', e);
-          }
-        }
-        
-        if (savedContents) {
-          try {
-            const parsedContents = JSON.parse(savedContents);
-            parsedContents.forEach((item: any) => {
-              item.createdAt = new Date(item.createdAt);
-              basicInfoItems.push(item);
-            });
-          } catch (e) {
-            console.error('Failed to parse saved contents:', e);
-          }
-        }
-
-        // ダミーデータの追加（実際のアプリでは不要）
-        // 常にダミーデータを追加して、選択できるものが必ずあるようにする
-        basicInfoItems.push({
-          id: 'dummy-1',
-          title: 'クラウド会計ソフトウェア基本情報',
-          content: `株式会社FinTechソリューションズが提供するクラウド会計ソフトウェア「SmartAccounts」に関する基本情報です。
-
-【商品・サービスの概要】
-SmartAccountsは、中小企業向けのクラウド型会計ソフトウェアで、請求書発行から経費管理、決算書作成まで一気通貫で対応します。インターネット環境があればいつでもどこでも利用可能で、モバイルアプリにも対応しています。
-
-【主な特徴】
-- AI搭載のレシート読取機能で経費精算の手間を90%削減
-- 銀行口座やクレジットカードと自動連携し、取引データを自動取得
-- 税務申告に必要な書類を自動生成し、電子申告にも対応
-
-【想定されるお客様】
-従業員50名以下の中小企業、個人事業主、フリーランス。特に、経理担当者が少ない、または経理業務の効率化を図りたい企業に最適です。
-
-【解決できる課題】
-経理業務の属人化、手作業による記帳ミス、確定申告時の書類作成負担、リモートワーク時の経理業務遅延などの課題を解決します。
-
-【提供価値】
-経理業務の時間を最大70%削減し、本業に集中できる環境を提供します。また、リアルタイムの経営状況の可視化により、的確な経営判断をサポートします。`,
-          metaDescription: '中小企業向けクラウド会計ソフトウェアの特徴と導入メリットについての基本情報です。',
-          permalink: 'cloud-accounting-software-info',
-          createdAt: new Date(2023, 5, 10)
-        });
-
-        basicInfoItems.push({
-          id: 'dummy-2',
-          title: 'オーガニック食品宅配サービス基本情報',
-          content: `株式会社グリーンテーブルが提供する「オーガニックライフ」に関する基本情報です。
-
-【商品・サービスの概要】
-オーガニックライフは、全国の厳選された有機栽培農家から直接仕入れた新鮮な野菜や果物、加工食品を定期的にご自宅にお届けする宅配サービスです。すべての食材は有機JAS認証を取得しており、安心・安全な食生活をサポートします。
-
-【主な特徴】
-- 契約農家から直送される完全無農薬・有機栽培の新鮮野菜
-- 旬の食材を活かしたレシピ提案とミールキット同梱オプション
-- 食材の生産者情報と栽培方法の完全開示による透明性
-
-【想定されるお客様】
-健康や食の安全性に関心の高い30〜50代の家族世帯、特に小さなお子様がいるご家庭や、食材の品質にこだわる方々。また、忙しくてスーパーに買い物に行く時間がない共働き世帯にも最適です。
-
-【解決できる課題】
-市販の食品に含まれる農薬や添加物への不安、忙しい日常での食材調達の時間的負担、食材の産地や栽培方法の不透明さなどの課題を解決します。`,
-          metaDescription: '無農薬・有機栽培の新鮮食材を定期宅配するサービスについての基本情報です。',
-          permalink: 'organic-food-delivery-info',
-          createdAt: new Date(2023, 5, 15)
-        });
-
-        basicInfoItems.push({
-          id: 'dummy-3',
-          title: 'オンラインヨガスタジオ基本情報',
-          content: `YogaLifeStudioが提供する「どこでもヨガ」に関する基本情報です。
-
-【商品・サービスの概要】
-どこでもヨガは、自宅や外出先から参加できるオンラインヨガスタジオです。ライブクラスとオンデマンドレッスンを組み合わせたハイブリッド型で、場所や時間を選ばずに本格的なヨガレッスンを受講できます。初心者から上級者まで、様々なレベルやスタイルのクラスを提供しています。
-
-【主な特徴】
-- 一流インストラクターによるライブクラスを毎日20本以上配信
-- 500本以上のレッスン動画がいつでも視聴可能なオンデマンドライブラリ
-- インストラクターからリアルタイムでポーズの修正やアドバイスが受けられる双方向コミュニケーション
-
-【想定されるお客様】
-忙しい仕事や育児でスタジオに通う時間がない方、自宅で気軽にヨガを始めたい初心者、対面レッスンに抵抗がある方、地方在住でヨガスタジオへのアクセスが限られている方など。年齢層は20代から60代まで幅広く対応。
-
-【解決できる課題】
-スタジオまでの移動時間や固定スケジュールの制約、初心者の対面レッスンへの心理的ハードル、地方在住者のヨガ教室へのアクセス制限、コロナ禍における運動不足などの課題を解決します。`,
-          metaDescription: '自宅で気軽に参加できるライブ配信・オンデマンドのヨガレッスンサービスについての基本情報です。',
-          permalink: 'online-yoga-studio-info',
-          createdAt: new Date(2023, 5, 20)
-        });
-        
-        setBasicInfoList(basicInfoItems);
+        setBasicInfoList(basicInfos);
         
         // 最新の基本情報を自動選択
-        if (basicInfoItems.length > 0) {
-          setSelectedBasicInfo(basicInfoItems[0].id);
+        if (basicInfos.length > 0) {
+          setSelectedBasicInfo(basicInfos[0].id);
         }
       } catch (error) {
         console.error('Error loading basic info:', error);
         setError('基本情報の読み込み中にエラーが発生しました。');
-        
-        // エラー時でもダミーデータを設定する
-        const dummyData = {
-          id: 'dummy-error',
-          title: 'サンプルコンテンツ',
-          content: 'これはサンプルコンテンツです。実際のアプリケーションでは、保存された基本情報が表示されます。',
-          metaDescription: 'サンプルメタ説明',
-          permalink: 'sample',
-          createdAt: new Date()
-        };
-        setBasicInfoList([dummyData]);
-        setSelectedBasicInfo(dummyData.id);
       }
     };
 
     // フォーミュラの読み込み
-    const loadFormulas = () => {
+    const loadFormulas = async () => {
       try {
-        // 実際のアプリケーションではAPIから取得するなど
-        // ここではモックデータを使用
-        const adCopyFormulas = mockFormulas.filter(formula => 
-          formula.type === 'ad_copy' && formula.isActive
-        );
-
-        if (adCopyFormulas.length === 0) {
-          // アクティブなフォーミュラがない場合は、すべてのad_copyタイプを取得
-          const allAdCopyFormulas = mockFormulas.filter(formula => formula.type === 'ad_copy');
-          setAdCopyFormulas(allAdCopyFormulas);
-          
-          // 最初のフォーミュラを選択
-          if (allAdCopyFormulas.length > 0) {
-            setSelectedFormula(allAdCopyFormulas[0].id);
-          }
+        // Supabaseから広告文フォーミュラを取得
+        const formulas = await adCopyService.getActiveAdCopyFormulas();
+        
+        if (formulas.length > 0) {
+          setAdCopyFormulas(formulas);
+          setSelectedFormula(formulas[0].id);
         } else {
-          setAdCopyFormulas(adCopyFormulas);
-          // 最初のフォーミュラを選択
-          setSelectedFormula(adCopyFormulas[0].id);
+          setError('アクティブな広告文フォーミュラが見つかりません。');
         }
       } catch (error) {
         console.error('Error loading formulas:', error);
         setError('フォーミュラの読み込み中にエラーが発生しました。');
-        
-        // エラー時でもダミーフォーミュラを設定
-        const dummyFormula = {
-          id: 'formula-dummy',
-          name: 'サンプルフォーミュラ',
-          type: 'ad_copy',
-          template: 'サンプルテンプレート',
-          variables: ['変数1', '変数2'],
-          isActive: true,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          summary: 'これはサンプルフォーミュラです。'
-        };
-        setAdCopyFormulas([dummyFormula]);
-        setSelectedFormula(dummyFormula.id);
       }
     };
 
     loadBasicInfo();
     loadFormulas();
-  }, []);
+  }, [currentUser]);
 
   // 編集モード用エフェクト
   useEffect(() => {
@@ -271,15 +106,7 @@ SmartAccountsは、中小企業向けのクラウド型会計ソフトウェア�
     setProgressPercent(0);
     
     try {
-      // 選択された基本情報とフォーミュラを取得
-      const basicInfo = basicInfoList.find(info => info.id === selectedBasicInfo);
-      const formula = adCopyFormulas.find(f => f.id === selectedFormula);
-      
-      if (!basicInfo || !formula) {
-        throw new Error('選択された基本情報またはフォーミュラが見つかりません。');
-      }
-
-      // 進捗状況のシミュレーション（実際のAPI呼び出し中に進捗を示すためのもの）
+      // 進捗状況のシミュレーション
       const progressInterval = setInterval(() => {
         setProgressPercent(prev => {
           // 95%まで進むようにする（100%は完了時に設定）
@@ -293,62 +120,28 @@ SmartAccountsは、中小企業向けのクラウド型会計ソフトウェア�
         });
       }, 300);
 
-      // プログレスバーを模擬するための時間（3秒）
-      await new Promise(resolve => setTimeout(resolve, 3000));
-
-      // 各AIモデルで広告文生成（実際はAPI呼び出しなど）
-      // ここではダミーの遅延と結果を用意
-      const models = [
-        { name: 'ChatGPT', delay: 500 },
-        { name: 'Gemini', delay: 500 },
-        { name: 'Claude', delay: 500 }
-      ];
-
-      // 並行して全モデルの生成を開始
-      const generationPromises = models.map(async (model) => {
-        // 実際のAPIリクエストの代わりに setTimeout でシミュレート
-        await new Promise(resolve => setTimeout(resolve, model.delay));
-        
-        // 各モデルの生成結果（ダミーデータ）
-        return {
-          id: `adcopy-${Date.now()}-${model.name.toLowerCase()}`,
-          title: `${basicInfo.title} - 広告文 (${model.name})`,
-          content: generateDummyAdCopyContent(basicInfo, formula, model.name),
-          source: model.name,
-          basicInfoId: basicInfo.id,
-          formulaId: formula.id,
-          createdAt: new Date()
-        };
-      });
-
-      // 全てのモデルの生成が完了するのを待つ
-      const results = await Promise.all(generationPromises);
+      // Supabaseサービスを使用して広告文を生成
+      const results = await adCopyService.generateAdCopies(
+        currentUser!.id,
+        selectedBasicInfo,
+        selectedFormula
+      );
       
-      // 結果を状態に設定
-      setGeneratedAdCopies(results);
+      // 結果を状態に設定（sourceフィールドはgeneratedByにマップ）
+      const mappedResults = results.map(adCopy => ({
+        ...adCopy,
+        source: adCopy.generatedBy
+      }));
+      setGeneratedAdCopies(mappedResults);
 
       // 進捗を100%に設定
       setProgressPercent(100);
       // インターバルをクリア（念のため）
       clearInterval(progressInterval);
 
-      // 広告文履歴に追加（全モデル分）
-      const savedHistory = localStorage.getItem('lp_navigator_adcopy_history');
-      const history = savedHistory ? JSON.parse(savedHistory) : [];
-      
-      // 全ての広告文を履歴に追加
-      results.forEach(adCopy => {
-        history.unshift(adCopy);
-      });
-      
-      localStorage.setItem('lp_navigator_adcopy_history', JSON.stringify(history));
-      
-      // 最初の広告文を表示用として保存
-      if (results.length > 0) {
-        localStorage.setItem('lp_navigator_generated_adcopy', JSON.stringify(results[0]));
-      }
-
       // 生成された広告文を比較ビューで表示するために画面遷移
+      // LocalStorageに一時保存（遷移先で使用するため）
+      localStorage.setItem('lp_navigator_generated_adcopies', JSON.stringify(mappedResults));
       navigate('/generator/adcopy', { replace: true });
 
     } catch (error) {
@@ -359,21 +152,6 @@ SmartAccountsは、中小企業向けのクラウド型会計ソフトウェア�
     }
   };
 
-  // ダミーの広告文コンテンツを生成（実際はAI APIを使用）
-  const generateDummyAdCopyContent = (basicInfo: BasicInfo, formula: AdCopyFormula, modelName: string) => {
-    // 基本情報の内容から簡単な広告文を生成
-    const contentText = basicInfo.content.substring(0, 100);
-    const titleText = basicInfo.title;
-    
-    // モデル別に少し異なる内容にする
-    if (modelName === 'ChatGPT') {
-      return `【${titleText}】\n\n業界最先端のAI技術を駆使して、あなたのコンテンツ作成を革新します。時間の節約と品質の向上を同時に実現。今すぐ無料トライアルを始めて、効率的なコンテンツ戦略を構築しましょう。`;
-    } else if (modelName === 'Gemini') {
-      return `✨ ${titleText} ✨\n\nコンテンツ作成の常識を覆す、次世代AIツール。あなたのアイデアを瞬時に魅力的な文章に変換します。創造性を解き放ち、ブランドの声を届けましょう。期間限定30%オフキャンペーン実施中！`;
-    } else {
-      return `${titleText}\n\n「もっと効率的にコンテンツを作れたら...」\nそんな願いを叶えるツールが誕生しました。高品質な文章を、あなたのブランドボイスで、しかも驚くほど簡単に。\n\n今なら14日間無料でお試しいただけます。`;
-    }
-  };
 
   // コピー機能
   const handleCopy = (text: string, id: string, type: string) => {
@@ -393,28 +171,25 @@ SmartAccountsは、中小企業向けのクラウド型会計ソフトウェア�
   };
 
   // 編集内容を保存
-  const saveEditedContent = (id: string) => {
+  const saveEditedContent = async (id: string) => {
     if (editorRef.current) {
       const updatedContent = editorRef.current.innerText;
       
-      // 広告文を更新
-      const updatedAdCopies = generatedAdCopies.map(copy => 
-        copy.id === id ? { ...copy, content: updatedContent } : copy
-      );
-      
-      setGeneratedAdCopies(updatedAdCopies);
-      
-      // 広告文履歴も更新
-      const savedHistory = localStorage.getItem('lp_navigator_adcopy_history');
-      if (savedHistory) {
-        const history = JSON.parse(savedHistory);
-        const updatedHistory = history.map((item: any) => 
-          item.id === id ? { ...item, content: updatedContent } : item
+      try {
+        // Supabaseで広告文を更新
+        await adCopyService.updateAdCopy(id, updatedContent);
+        
+        // ローカルの状態も更新
+        const updatedAdCopies = generatedAdCopies.map(copy => 
+          copy.id === id ? { ...copy, content: updatedContent } : copy
         );
-        localStorage.setItem('lp_navigator_adcopy_history', JSON.stringify(updatedHistory));
+        
+        setGeneratedAdCopies(updatedAdCopies);
+        setEditMode(null);
+      } catch (error) {
+        console.error('広告文の更新に失敗しました:', error);
+        setError('広告文の保存に失敗しました。');
       }
-      
-      setEditMode(null);
     }
   };
 

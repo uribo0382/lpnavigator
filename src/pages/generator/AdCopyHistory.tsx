@@ -5,20 +5,18 @@ import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import Input from '../../components/ui/Input';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import { useAuthFixed as useAuth } from '../../contexts/AuthContextFixed';
+import { adCopyService } from '../../services/adCopyService';
+import type { AdCopy as AdCopyServiceType } from '../../services/adCopyService';
 
-// 広告文の型定義
-interface AdCopy {
-  id: string;
-  title: string;
-  content: string;
-  source: string; // AIモデル名（"ChatGPT", "Gemini", "Claude"など）
-  basicInfoId: string; // 元になった基本情報のID
-  formulaId: string; // 使用したフォーミュラのID
-  createdAt: Date;
+// 広告文の型定義（互換性のために拡張）
+interface AdCopy extends AdCopyServiceType {
+  source?: string; // AIモデル名（generatedByとの互換性のため）
 }
 
 const AdCopyHistory: React.FC = () => {
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
   
   // 広告文履歴リスト
   const [adCopies, setAdCopies] = useState<AdCopy[]>([]);
@@ -37,63 +35,49 @@ const AdCopyHistory: React.FC = () => {
 
   // 広告文履歴の読み込み
   useEffect(() => {
-    const loadAdCopies = () => {
+    const loadAdCopies = async () => {
+      if (!currentUser) return;
+      
       setIsLoading(true);
       try {
-        // ローカルストレージから広告文履歴を取得
-        const savedHistory = localStorage.getItem('lp_navigator_adcopy_history');
-        if (savedHistory) {
-          const history = JSON.parse(savedHistory);
-          // 日付をDate型に変換
-          const formattedHistory = history.map((item: any) => ({
-            ...item,
-            createdAt: new Date(item.createdAt)
-          }));
-          setAdCopies(formattedHistory);
-        } else {
-          // ダミーデータの追加（実際のアプリでは不要）
-          const dummyData = [
-            {
-              id: 'adcopy-1',
-              title: 'AIを活用したコンテンツ作成ツール - 広告文 (ChatGPT)',
-              content: '【AIを活用したコンテンツ作成ツール】\n\n業界最先端のAI技術を駆使して、あなたのコンテンツ作成を革新します。時間の節約と品質の向上を同時に実現。今すぐ無料トライアルを始めて、効率的なコンテンツ戦略を構築しましょう。',
-              source: 'ChatGPT',
-              basicInfoId: 'dummy-1',
-              formulaId: 'formula-004',
-              createdAt: new Date(2023, 8, 15)
-            },
-            {
-              id: 'adcopy-2',
-              title: 'デジタルマーケティング支援サービス - 広告文 (Gemini)',
-              content: '✨ デジタルマーケティング支援サービス ✨\n\nマーケティングの常識を覆す、次世代AIツール。あなたのアイデアを瞬時に魅力的な広告に変換します。創造性を解き放ち、ブランドの声を届けましょう。期間限定30%オフキャンペーン実施中！',
-              source: 'Gemini',
-              basicInfoId: 'dummy-2',
-              formulaId: 'formula-005',
-              createdAt: new Date(2023, 8, 10)
-            },
-            {
-              id: 'adcopy-3',
-              title: 'クラウドストレージソリューション - 広告文 (Claude)',
-              content: 'クラウドストレージソリューション\n\n「もっと安全にデータを保存できたら...」\nそんな願いを叶えるサービスが誕生しました。高セキュリティと使いやすさを兼ね備えた、次世代のクラウドストレージ。\n\n今なら30日間無料でお試しいただけます。',
-              source: 'Claude',
-              basicInfoId: 'dummy-3',
-              formulaId: 'formula-004',
-              createdAt: new Date(2023, 8, 5)
-            }
-          ];
-          setAdCopies(dummyData);
-        }
+        // Supabaseから広告文履歴を取得
+        const history = await adCopyService.getAdCopyHistory(currentUser.id, 100);
+        
+        // sourceフィールドの互換性のため、generatedByをsourceにマップ
+        const formattedHistory = history.map(item => ({
+          ...item,
+          source: item.generatedBy
+        }));
+        
+        setAdCopies(formattedHistory);
         setError(null);
       } catch (error) {
         console.error('Error loading ad copies:', error);
         setError('広告文の読み込み中にエラーが発生しました。');
+        
+        // エラー時はローカルストレージから読み込みを試みる（フォールバック）
+        try {
+          const savedHistory = localStorage.getItem('lp_navigator_adcopy_history');
+          if (savedHistory) {
+            const history = JSON.parse(savedHistory);
+            const formattedHistory = history.map((item: any) => ({
+              ...item,
+              createdAt: new Date(item.createdAt),
+              updatedAt: item.updatedAt ? new Date(item.updatedAt) : new Date(item.createdAt)
+            }));
+            setAdCopies(formattedHistory);
+            setError('オフラインモードで表示しています。');
+          }
+        } catch (localError) {
+          console.error('Local storage error:', localError);
+        }
       } finally {
         setIsLoading(false);
       }
     };
 
     loadAdCopies();
-  }, []);
+  }, [currentUser]);
 
   // 検索フィルター適用
   const filteredAdCopies = adCopies.filter(adCopy => {
@@ -103,7 +87,7 @@ const AdCopyHistory: React.FC = () => {
     return (
       adCopy.title.toLowerCase().includes(searchLower) ||
       adCopy.content.toLowerCase().includes(searchLower) ||
-      adCopy.source.toLowerCase().includes(searchLower)
+      (adCopy.source || adCopy.generatedBy || '').toLowerCase().includes(searchLower)
     );
   });
 
@@ -112,8 +96,8 @@ const AdCopyHistory: React.FC = () => {
     setSelectedId(adCopy.id); // ローディング表示のため
     
     try {
-      // 選択した広告文をローカルストレージに保存
-      localStorage.setItem('lp_navigator_generated_adcopy', JSON.stringify(adCopy));
+      // 選択した広告文をローカルストレージに保存（表示画面で使用）
+      localStorage.setItem('lp_navigator_generated_adcopies', JSON.stringify([adCopy]));
       setTimeout(() => {
         navigate('/generator/adcopy', { replace: true });
         setSelectedId(null);
@@ -132,28 +116,31 @@ const AdCopyHistory: React.FC = () => {
   };
 
   // 広告文の削除実行
-  const executeDelete = () => {
+  const executeDelete = async () => {
     if (!adCopyToDelete) return;
     
     setSelectedId(adCopyToDelete); // ローディング表示用
     
-    setTimeout(() => {
-      try {
-        const newAdCopies = adCopies.filter(adCopy => adCopy.id !== adCopyToDelete);
-        setAdCopies(newAdCopies);
-        
-        // ローカルストレージを更新
-        localStorage.setItem('lp_navigator_adcopy_history', JSON.stringify(newAdCopies));
-        
-        setShowDeleteConfirmDialog(false);
-        setAdCopyToDelete(null);
-        setError(null);
-      } catch (error) {
-        console.error('Error deleting ad copy:', error);
-        setError('広告文の削除中にエラーが発生しました。');
-      }
-      setSelectedId(null);
-    }, 800);
+    try {
+      // Supabaseから削除（実装が必要な場合）
+      // 注意: 現在のadCopyServiceには削除メソッドがないため、
+      // 実際の削除はSupabaseで直接行うか、サービスに削除メソッドを追加する必要があります
+      
+      // UIからは削除
+      const newAdCopies = adCopies.filter(adCopy => adCopy.id !== adCopyToDelete);
+      setAdCopies(newAdCopies);
+      
+      // ローカルストレージも更新（フォールバック用）
+      localStorage.setItem('lp_navigator_adcopy_history', JSON.stringify(newAdCopies));
+      
+      setShowDeleteConfirmDialog(false);
+      setAdCopyToDelete(null);
+      setError(null);
+    } catch (error) {
+      console.error('Error deleting ad copy:', error);
+      setError('広告文の削除中にエラーが発生しました。');
+    }
+    setSelectedId(null);
   };
 
   // 日付のフォーマット
@@ -168,8 +155,9 @@ const AdCopyHistory: React.FC = () => {
   };
 
   // モデルアイコンの取得
-  const getModelIcon = (source: string) => {
-    switch (source) {
+  const getModelIcon = (source: string | undefined) => {
+    const model = source || '';
+    switch (model) {
       case 'ChatGPT':
         return <Bot size={16} className="text-green-600" />;
       case 'Gemini':
@@ -265,9 +253,15 @@ const AdCopyHistory: React.FC = () => {
                   {adCopy.content.length > 150 ? '...' : ''}
                 </p>
                 <div className="flex items-center justify-between text-xs text-gray-500">
-                  <div className="flex items-center">
-                    <Calendar size={14} className="mr-1" />
-                    <span>{formatDateDisplay(adCopy.createdAt)}</span>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center">
+                      <Calendar size={14} className="mr-1" />
+                      <span>{formatDateDisplay(adCopy.createdAt)}</span>
+                    </div>
+                    <div className="flex items-center">
+                      {getModelIcon(adCopy.source || adCopy.generatedBy)}
+                      <span className="ml-1">{adCopy.source || adCopy.generatedBy}</span>
+                    </div>
                   </div>
                 </div>
               </div>

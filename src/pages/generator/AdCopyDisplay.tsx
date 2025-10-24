@@ -1,18 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Copy, Download, Pencil, FileText, ListChecks, Check, RefreshCw, Edit, Save, Bot, Sparkles, Zap, FileEdit } from 'lucide-react';
+import { ArrowLeft, Copy, Download, Pencil, ListChecks, Check, RefreshCw, Edit, Save, Bot, Sparkles, Zap, FileEdit, FileText } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
+import { useAuthFixed as useAuth } from '../../contexts/AuthContextFixed';
+import { adCopyService } from '../../services/adCopyService';
 
-// 広告文の型定義
-interface AdCopy {
-  id: string;
-  title: string;
-  content: string;
-  source: string; // AIモデル名（"ChatGPT", "Gemini", "Claude"など）
-  basicInfoId: string; // 元になった基本情報のID
-  formulaId: string; // 使用したフォーミュラのID
-  createdAt: Date;
+// 型定義はadCopyServiceから取得
+import type { AdCopy as AdCopyType } from '../../services/adCopyService';
+
+// sourceフィールドを追加（互換性のため）
+interface AdCopy extends AdCopyType {
+  source?: string; // AIモデル名（generatedByと同じ）
 }
 
 interface AdCopyDisplayProps {
@@ -23,6 +22,7 @@ interface AdCopyDisplayProps {
 const AdCopyDisplay: React.FC<AdCopyDisplayProps> = (props) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { currentUser } = useAuth();
   const [copied, setCopied] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,37 +41,25 @@ const AdCopyDisplay: React.FC<AdCopyDisplayProps> = (props) => {
   // 広告文がない場合はローカルストレージから読み込む
   useEffect(() => {
     if (!props.adCopy) {
-      const savedAdCopy = localStorage.getItem('lp_navigator_generated_adcopy');
-      if (savedAdCopy) {
+      // LocalStorageから生成された広告文を取得
+      const savedAdCopies = localStorage.getItem('lp_navigator_generated_adcopies');
+      if (savedAdCopies) {
         try {
-          const parsedAdCopy = JSON.parse(savedAdCopy);
-          parsedAdCopy.createdAt = new Date(parsedAdCopy.createdAt);
-          setAdCopy(parsedAdCopy);
-          setSelectedModel(parsedAdCopy.source);
-
-          // 広告文履歴から同じタイトルの他のモデルの広告文を探す
-          const savedHistory = localStorage.getItem('lp_navigator_adcopy_history');
-          if (savedHistory) {
-            const history = JSON.parse(savedHistory);
-            const formattedHistory = history.map((item: any) => ({
-              ...item,
-              createdAt: new Date(item.createdAt)
-            }));
-            
-            // タイトルの基本部分（モデル名を除いた部分）を取得
-            const baseTitle = parsedAdCopy.title.replace(/ - 広告文 \(.+\)$/, '');
-            
-            // 同じ基本タイトルを持つ広告文を全て取得
-            const relatedAdCopies = formattedHistory.filter((item: AdCopy) => {
-              const itemBaseTitle = item.title.replace(/ - 広告文 \(.+\)$/, '');
-              return itemBaseTitle === baseTitle;
-            });
-            
-            setAllAdCopies(relatedAdCopies);
-            setError(null);
+          const parsedAdCopies = JSON.parse(savedAdCopies);
+          const formattedAdCopies = parsedAdCopies.map((item: any) => ({
+            ...item,
+            source: item.source || item.generatedBy, // sourceフィールドをマップ
+            createdAt: new Date(item.createdAt)
+          }));
+          
+          setAllAdCopies(formattedAdCopies);
+          if (formattedAdCopies.length > 0) {
+            setAdCopy(formattedAdCopies[0]);
+            setSelectedModel(formattedAdCopies[0].source || formattedAdCopies[0].generatedBy);
           }
+          setError(null);
         } catch (e) {
-          console.error('Failed to parse saved ad copy:', e);
+          console.error('Failed to parse saved ad copies:', e);
           setError('広告文の読み込み中にエラーが発生しました。');
           redirectToCreate();
         }
@@ -80,7 +68,7 @@ const AdCopyDisplay: React.FC<AdCopyDisplayProps> = (props) => {
       }
     } else {
       setAdCopy(props.adCopy);
-      setSelectedModel(props.adCopy.source);
+      setSelectedModel(props.adCopy.source || props.adCopy.generatedBy);
     }
   }, [props.adCopy]);
 
@@ -123,6 +111,20 @@ const AdCopyDisplay: React.FC<AdCopyDisplayProps> = (props) => {
     }
   };
 
+  // LP記事生成ボタンのハンドラー
+  const handleGenerateLpArticle = (adCopy: AdCopy) => {
+    // 選択された広告文をローカルストレージに保存
+    localStorage.setItem('lp_navigator_selected_adcopy', JSON.stringify(adCopy));
+    
+    // LP記事生成画面に遷移
+    try {
+      navigate('/generator/lparticle/create', { replace: true });
+    } catch (error) {
+      console.error('Navigation error:', error);
+      window.location.href = '/generator/lparticle/create';
+    }
+  };
+
   // 広告文一覧ページに移動
   const handleViewHistory = () => {
     try {
@@ -133,19 +135,6 @@ const AdCopyDisplay: React.FC<AdCopyDisplayProps> = (props) => {
     }
   };
 
-  // LP記事生成ボタンのハンドラー
-  const handleGenerateLpArticle = (adCopy: AdCopy) => {
-    // 選択された広告文をローカルストレージに保存
-    localStorage.setItem('lp_navigator_selected_adcopy', JSON.stringify(adCopy));
-    
-    // LP記事生成画面に移動
-    try {
-      navigate('/generator/lparticle/create', { replace: true });
-    } catch (error) {
-      console.error('Navigation error:', error);
-      window.location.href = '/generator/lparticle/create';
-    }
-  };
 
   if (isLoading) {
     return (
@@ -168,6 +157,7 @@ const AdCopyDisplay: React.FC<AdCopyDisplayProps> = (props) => {
     setCopied(type);
     setTimeout(() => setCopied(null), 2000);
   };
+
 
   // 日付のフォーマット
   const formatDateDisplay = (date: Date) => {
@@ -210,7 +200,7 @@ const AdCopyDisplay: React.FC<AdCopyDisplayProps> = (props) => {
 
   // 特定のモデルの広告文を取得
   const getAdCopyByModel = (model: string) => {
-    return allAdCopies.find(copy => copy.source === model) || null;
+    return allAdCopies.find(copy => (copy.source || copy.generatedBy) === model) || null;
   };
 
   // 編集モードへの切り替え
@@ -229,22 +219,34 @@ const AdCopyDisplay: React.FC<AdCopyDisplayProps> = (props) => {
   };
 
   // 編集内容の保存
-  const handleSaveEdit = (model: string) => {
-    const updatedAdCopies = allAdCopies.map(copy => {
-      if (copy.source === model) {
-        return { ...copy, content: editingContent };
-      }
-      return copy;
-    });
+  const handleSaveEdit = async (model: string) => {
+    const targetAdCopy = getAdCopyByModel(model);
+    if (!targetAdCopy) return;
     
-    setAllAdCopies(updatedAdCopies);
-    
-    // ローカルストレージも更新
-    localStorage.setItem('lp_navigator_adcopy_history', JSON.stringify(updatedAdCopies));
-    
-    // 編集モードを終了
-    setEditingModel(null);
-    setEditingContent('');
+    try {
+      // Supabaseで広告文を更新
+      await adCopyService.updateAdCopy(targetAdCopy.id, editingContent);
+      
+      // ローカルの状態を更新
+      const updatedAdCopies = allAdCopies.map(copy => {
+        if ((copy.source || copy.generatedBy) === model) {
+          return { ...copy, content: editingContent };
+        }
+        return copy;
+      });
+      
+      setAllAdCopies(updatedAdCopies);
+      
+      // ローカルストレージも更新
+      localStorage.setItem('lp_navigator_generated_adcopies', JSON.stringify(updatedAdCopies));
+      
+      // 編集モードを終了
+      setEditingModel(null);
+      setEditingContent('');
+    } catch (error) {
+      console.error('広告文の保存に失敗しました:', error);
+      setError('広告文の保存に失敗しました。');
+    }
   };
 
   // 指定モデルの広告文表示（3列比較表示用）
@@ -382,17 +384,9 @@ const AdCopyDisplay: React.FC<AdCopyDisplayProps> = (props) => {
         </div>
       </div>
 
-      {/* 3列表示レイアウト - 各AIモデルの広告文を横に並べる */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* ChatGPT列 */}
-        <Card className={`overflow-hidden flex flex-col ${getAdCopyByModel('ChatGPT') ? 'border-green-300' : ''}`}>
-          {renderCardHeader('ChatGPT', Bot, 'bg-green-50 border-b border-green-200')}
-          <div className="flex-1 overflow-auto bg-white flex flex-col">
-            {renderAdCopyContent('ChatGPT')}
-          </div>
-        </Card>
-        
-        {/* Gemini列 */}
+      {/* Geminiのみ表示（GPTとClaudeは一時的に無効化） */}
+      <div className="grid grid-cols-1 gap-6">
+        {/* Geminiの広告文を中央に表示 */}
         <Card className={`overflow-hidden flex flex-col ${getAdCopyByModel('Gemini') ? 'border-purple-300' : ''}`}>
           {renderCardHeader('Gemini', Sparkles, 'bg-purple-50 border-b border-purple-200')}
           <div className="flex-1 overflow-auto bg-white flex flex-col">
@@ -400,13 +394,14 @@ const AdCopyDisplay: React.FC<AdCopyDisplayProps> = (props) => {
           </div>
         </Card>
         
-        {/* Claude列 */}
-        <Card className={`overflow-hidden flex flex-col ${getAdCopyByModel('Claude') ? 'border-amber-300' : ''}`}>
-          {renderCardHeader('Claude', Zap, 'bg-amber-50 border-b border-amber-200')}
-          <div className="flex-1 overflow-auto bg-white flex flex-col">
-            {renderAdCopyContent('Claude')}
-          </div>
-        </Card>
+        {/* 他のAIモデルは今後利用可能になる予定のメッセージ */}
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center text-gray-600">
+          <p className="text-sm">
+            ※ ChatGPTとClaudeによる広告文生成は現在メンテナンス中です。
+            <br />
+            近日中にご利用いただけるようになります。
+          </p>
+        </div>
       </div>
 
       {/* 追加情報と操作ボタン */}
@@ -449,6 +444,28 @@ const AdCopyDisplay: React.FC<AdCopyDisplayProps> = (props) => {
           </div>
         </Card>
       </div>
+
+      {/* LP記事生成ボタン（下部に大きく配置） */}
+      <div className="mt-8 p-6 bg-gradient-to-r from-primary-50 to-primary-100 rounded-lg border border-primary-200">
+        <div className="text-center">
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">
+            次のステップ
+          </h3>
+          <p className="text-sm text-gray-600 mb-4">
+            生成された広告文を基に、LP記事を作成しましょう
+          </p>
+          <Button
+            variant="primary"
+            size="lg"
+            leftIcon={<FileText size={20} />}
+            onClick={() => handleGenerateLpArticle(adCopy)}
+            className="min-w-[250px] shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+          >
+            LP記事を生成する
+          </Button>
+        </div>
+      </div>
+
     </div>
   );
 };

@@ -12,36 +12,18 @@ import {
 } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
-import { mockUsers } from '../../utils/mockData';
+import { userService, User } from '../../services/userService';
+import { testSupabaseConnection } from '../../lib/supabase';
+import { debugUsersData } from '../../services/debugUserService';
 
-// ユーザー型定義
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: 'admin' | 'user';
-  plan: string;
-  isActive: boolean;
-  createdAt: Date;
-  lastLoginAt?: Date;
-  company?: string;
-  position?: string;
-  phone?: string;
-  notes?: string;
-  usageLimit?: number;
-  apiAccess?: boolean;
-  usage?: {
-    lpGenerated: number;
-    apiCalls: number;
-  };
-}
 
 // ユーザー一覧管理コンポーネント
 const UsersManagement: React.FC = () => {
   // 状態管理
-  const [users, setUsers] = useState<User[]>(mockUsers as User[]);
+  const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<keyof User>('createdAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -49,13 +31,52 @@ const UsersManagement: React.FC = () => {
 
   // ユーザーデータの読み込み
   useEffect(() => {
-    fetchUsers();
+    // Supabase接続テストを実行してから、ユーザーデータを取得
+    const initializeData = async () => {
+      // デバッグ: 生データを確認
+      await debugUsersData();
+      
+      const isConnected = await testSupabaseConnection();
+      if (!isConnected) {
+        setError('データベースへの接続に失敗しました。環境変数を確認してください。');
+        setIsLoading(false);
+        return;
+      }
+      fetchUsers();
+    };
+    
+    initializeData();
   }, []);
 
   // ソートと検索とフィルタリングを適用
   useEffect(() => {
-    // 一般ユーザーのみを取得（管理者は除外）
-    let result = users.filter(user => user.role === 'user');
+    console.log('=== UsersManagement Filtering Debug ===');
+    console.log('1. Raw users array:', users);
+    console.log('2. Users count:', users.length);
+    console.log('3. Selected filter:', selectedFilter);
+    console.log('4. User details:', users.map(u => ({ 
+      id: u.id, 
+      email: u.email, 
+      role: u.role, 
+      isActive: u.isActive,
+      isActiveType: typeof u.isActive
+    })));
+    
+    // フィルタリング適用
+    let result = [...users];
+    console.log('5. Initial result count:', result.length);
+    
+    // 特定のフィルターが選択されている場合のみフィルタリング
+    if (selectedFilter === 'users-only') {
+      result = result.filter(user => user.role === 'user');
+      console.log('6a. After users-only filter:', result.length);
+    } else if (selectedFilter === 'admins-only') {
+      result = result.filter(user => user.role === 'admin');
+      console.log('6b. After admins-only filter:', result.length);
+    }
+    // 'all'の場合は全ユーザーを表示
+    
+    console.log('7. After role filter - result:', result);
 
     // 検索フィルタリング
     if (searchQuery) {
@@ -68,16 +89,14 @@ const UsersManagement: React.FC = () => {
       );
     }
 
-    // ステータスフィルタリング
-    if (selectedFilter !== 'all') {
-      if (selectedFilter === 'active') {
-        result = result.filter(user => user.isActive);
-      } else if (selectedFilter === 'inactive') {
-        result = result.filter(user => !user.isActive);
-      } else if (selectedFilter.startsWith('plan:')) {
-        const plan = selectedFilter.split(':')[1];
-        result = result.filter(user => user.plan === plan);
-      }
+    // ステータスフィルタリング（roleフィルター以外の場合）
+    if (selectedFilter === 'active') {
+      result = result.filter(user => user.isActive);
+    } else if (selectedFilter === 'inactive') {
+      result = result.filter(user => !user.isActive);
+    } else if (selectedFilter.startsWith('plan:')) {
+      const plan = selectedFilter.split(':')[1];
+      result = result.filter(user => user.plan === plan);
     }
 
     // ソート適用
@@ -106,20 +125,38 @@ const UsersManagement: React.FC = () => {
       return 0;
     });
 
+    console.log('8. Final filtered result:', result);
+    console.log('9. Final filtered result count:', result.length);
     setFilteredUsers(result);
+    console.log('=== End of Filtering Debug ===');
   }, [users, searchQuery, sortField, sortDirection, selectedFilter]);
 
-  // ユーザーデータ取得（モック）
+  // ユーザーデータ取得
   const fetchUsers = async () => {
     setIsLoading(true);
+    setError(null);
     try {
-      // APIコールをシミュレート
-      await new Promise(resolve => setTimeout(resolve, 800));
-      // 初期データ取得時には管理者を除外しないでsetUsersに設定
-      // （フィルタリングはuseEffectで行う）
-      setUsers(mockUsers as User[]);
-    } catch (error) {
+      // 全ユーザーを取得（フィルタリングはuseEffectで行う）
+      const data = await userService.getAllUsers();
+      console.log('Fetched users:', data);
+      console.log('Data type:', typeof data);
+      console.log('Is array:', Array.isArray(data));
+      
+      if (!data) {
+        console.error('No data returned from userService');
+        setUsers([]);
+      } else if (!Array.isArray(data)) {
+        console.error('Data is not an array:', data);
+        setUsers([]);
+      } else {
+        setUsers(data);
+      }
+    } catch (error: any) {
       console.error('Failed to fetch users:', error);
+      // より詳細なエラーメッセージを表示
+      const errorMessage = error?.message || 'ユーザーデータの取得に失敗しました。';
+      setError(`エラー: ${errorMessage}`);
+      setUsers([]); // エラー時も空配列をセット
     } finally {
       setIsLoading(false);
     }
@@ -174,6 +211,12 @@ const UsersManagement: React.FC = () => {
         <h1 className="text-2xl font-bold text-gray-800">ユーザー管理</h1>
       </div>
 
+      {error && (
+        <Card className="mb-4 p-4 bg-red-50 border-red-200">
+          <p className="text-red-700">{error}</p>
+        </Card>
+      )}
+
       {/* 検索とフィルター */}
       <Card className="mb-4 p-4">
         <div className="flex flex-col md:flex-row justify-between gap-4">
@@ -198,6 +241,8 @@ const UsersManagement: React.FC = () => {
                 onChange={(e) => setSelectedFilter(e.target.value)}
               >
                 <option value="all">すべてのユーザー</option>
+                <option value="users-only">一般ユーザーのみ</option>
+                <option value="admins-only">管理者のみ</option>
                 <option value="active">有効なユーザーのみ</option>
                 <option value="inactive">無効なユーザーのみ</option>
                 <option value="plan:free">フリープラン</option>
@@ -226,7 +271,7 @@ const UsersManagement: React.FC = () => {
       {/* ユーザーリスト */}
       <Card>
         <div className="overflow-x-auto">
-          {isLoading && filteredUsers.length === 0 ? (
+          {isLoading ? (
             <div className="py-12 text-center">
               <RefreshCw size={32} className="animate-spin mx-auto text-gray-400 mb-4" />
               <p className="text-gray-500">ユーザーデータを読み込み中...</p>
@@ -235,6 +280,11 @@ const UsersManagement: React.FC = () => {
             <div className="py-12 text-center">
               <p className="text-gray-500 mb-2">ユーザーが見つかりません</p>
               <p className="text-gray-400 text-sm">検索条件を変更するか、新しいユーザーを登録してください。</p>
+              {users.length === 0 && (
+                <p className="text-gray-400 text-sm mt-2">
+                  データベースにユーザーが登録されていない可能性があります。
+                </p>
+              )}
             </div>
           ) : (
             <table className="w-full divide-y divide-gray-200">
@@ -341,7 +391,7 @@ const UsersManagement: React.FC = () => {
                       {formatDate(user.createdAt)}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <Link to={`/admin/users/${user.id}`}>
+                      <Link to={`/admin/users/${user.id}`} onClick={() => console.log('Navigating to edit user:', user.id, user.email)}>
                         <Button 
                           variant="ghost" 
                           size="sm" 

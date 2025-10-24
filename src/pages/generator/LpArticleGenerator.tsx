@@ -5,6 +5,8 @@ import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import Select from '../../components/ui/Select';
 import { mockFormulas } from '../../utils/mockData';
+import { lpArticleService } from '../../services/lpArticleService';
+import { useAuthFixed as useAuth } from '../../contexts/AuthContextFixed';
 
 // 基本情報の型定義
 interface BasicInfo {
@@ -53,6 +55,7 @@ interface AdCopy {
 
 const LpArticleGenerator: React.FC = () => {
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
   
   // 選択された広告文
   const [selectedAdCopy, setSelectedAdCopy] = useState<AdCopy | null>(null);
@@ -99,18 +102,15 @@ const LpArticleGenerator: React.FC = () => {
     };
 
     // フォーミュラの読み込み
-    const loadFormulas = () => {
+    const loadFormulas = async () => {
       try {
-        // 実際のアプリケーションではAPIから取得するなど
-        // ここではモックデータを使用
-        const lpArticleFormulas = mockFormulas.filter(formula => 
-          formula.type === 'lp_article' && formula.isActive
-        );
-
-        setLpArticleFormulas(lpArticleFormulas);
+        // Supabaseからフォーミュラを取得
+        const formulas = await lpArticleService.getActiveLpArticleFormulas();
+        
+        setLpArticleFormulas(formulas);
         // 最初のフォーミュラを選択
-        if (lpArticleFormulas.length > 0) {
-          setSelectedFormula(lpArticleFormulas[0].id);
+        if (formulas.length > 0) {
+          setSelectedFormula(formulas[0].id);
         }
       } catch (error) {
         console.error('Error loading formulas:', error);
@@ -135,7 +135,7 @@ const LpArticleGenerator: React.FC = () => {
 
   // AIモデルによるLP記事生成関数
   const generateLpArticle = async () => {
-    if (!selectedAdCopy || !selectedFormula) {
+    if (!selectedAdCopy || !selectedFormula || !currentUser) {
       setError('広告文またはLP記事フォーミュラが選択されていません。');
       return;
     }
@@ -151,12 +151,7 @@ const LpArticleGenerator: React.FC = () => {
         throw new Error('選択された広告文、またはLP記事フォーミュラが見つかりません。');
       }
 
-      const selectedModelName = selectedAdCopy.source; // 選択された広告文の生成モデル
-      if (!selectedModelName) {
-        throw new Error('選択された広告文の生成元AIモデルを特定できませんでした。');
-      }
-
-      // 進捗状況のシミュレーション (AdCopyGeneratorから移植)
+      // 進捗状況のシミュレーション
       const progressInterval = setInterval(() => {
         setProgressPercent(prev => {
           if (prev >= 95) {
@@ -168,44 +163,46 @@ const LpArticleGenerator: React.FC = () => {
         });
       }, 300);
 
-      // プログレスバーを模擬するための時間（3秒）
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Supabase APIを使用してLP記事を生成
+      const lpArticles = await lpArticleService.generateLpArticles(
+        currentUser.id,
+        selectedAdCopy.basicInfoId,
+        selectedAdCopy.id,
+        formula.id
+      );
 
-      // LP記事生成に使用するモデルを選択された広告文のモデルに限定
-      const models = [{ name: selectedModelName, delay: 500 }];
-
-      const generationPromises = models.map(async (model) => {
-        await new Promise(resolve => setTimeout(resolve, model.delay));
-        return {
-          id: `lparticle-${Date.now()}-${model.name.toLowerCase()}`,
-          title: `${selectedAdCopy.title.replace(/ - 広告文 \(.+\)$/, '')} - LP記事 (${model.name})`,
-          content: generateDummyLpArticleContent(selectedAdCopy, formula, model.name), 
-          source: model.name,
-          basicInfoId: selectedAdCopy.basicInfoId,
-          formulaId: formula.id,
-          adCopyId: selectedAdCopy.id,
-          createdAt: new Date()
-        };
-      });
-
-      const results = await Promise.all(generationPromises);
-      setGeneratedLpArticles(results);
+      // 進捗を100%に設定
       setProgressPercent(100);
       clearInterval(progressInterval);
 
-      const savedHistory = localStorage.getItem('lp_navigator_lparticle_history');
-      const history = savedHistory ? JSON.parse(savedHistory) : [];
-      results.forEach(lpArticle => {
-        history.unshift(lpArticle);
-      });
-      localStorage.setItem('lp_navigator_lparticle_history', JSON.stringify(history));
+      if (lpArticles.length === 0) {
+        throw new Error('LP記事の生成に失敗しました。');
+      }
+
+      // 生成されたLP記事を状態に保存
+      const formattedArticles = lpArticles.map(article => ({
+        id: article.id,
+        title: article.title,
+        content: article.content,
+        source: article.generatedBy,
+        basicInfoId: article.basicInfoId,
+        formulaId: article.formulaId,
+        adCopyId: selectedAdCopy.id,
+        createdAt: article.createdAt
+      }));
+
+      setGeneratedLpArticles(formattedArticles);
+
+      // LocalStorageにも保存（表示画面で使用）
+      localStorage.setItem('lp_navigator_generated_lparticles', JSON.stringify(formattedArticles));
       
-      if (results.length > 0) {
-        localStorage.setItem('lp_navigator_generated_lparticle', JSON.stringify(results[0]));
+      if (formattedArticles.length > 0) {
+        localStorage.setItem('lp_navigator_generated_lparticle', JSON.stringify(formattedArticles[0]));
       }
     } catch (error) {
       console.error('Error generating LP articles:', error);
-      setError('LP記事の生成中にエラーが発生しました。');
+      setError(error instanceof Error ? error.message : 'LP記事の生成中にエラーが発生しました。');
+      setProgressPercent(0);
     } finally {
       setIsGenerating(false);
     }

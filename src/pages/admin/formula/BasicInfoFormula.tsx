@@ -1,69 +1,105 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import Button from '../../../components/ui/Button';
 import Card from '../../../components/ui/Card';
 import Modal from '../../../components/ui/Modal';
-import { mockFormulas } from '../../../utils/mockData';
+import { formulaService } from '../../../services/formulaService';
+import type { Formula } from '../../../services/formulaService';
 import FormulaEditor from './FormulaEditor';
 
 const BasicInfoFormula: React.FC = () => {
-  const [formulas, setFormulas] = useState(
-    mockFormulas.filter(formula => formula.type === 'basic_info')
-  );
+  const [formulas, setFormulas] = useState<Formula[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [editingFormula, setEditingFormula] = useState<any>(null);
+  const [editingFormula, setEditingFormula] = useState<Formula | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [formulaToDelete, setFormulaToDelete] = useState<string | null>(null);
   const [showActivateConfirm, setShowActivateConfirm] = useState(false);
   const [formulaToActivate, setFormulaToActivate] = useState<string | null>(null);
+
+  // フォーミュラ一覧を取得
+  useEffect(() => {
+    loadFormulas();
+  }, []);
+
+  const loadFormulas = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const data = await formulaService.getFormulasByType('basic_info');
+      setFormulas(data);
+    } catch (error) {
+      console.error('フォーミュラの読み込みエラー:', error);
+      setError('フォーミュラの読み込みに失敗しました');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleCreateNew = () => {
     setEditingFormula(null);
     setShowModal(true);
   };
 
-  const handleEdit = (formula: any) => {
+  const handleEdit = (formula: Formula) => {
     setEditingFormula(formula);
     setShowModal(true);
   };
 
-  const handleSave = (formula: any) => {
-    if (editingFormula) {
-      // 編集モード
-      const isActivatingInEdit = !editingFormula.isActive && formula.isActive;
-      
-      if (isActivatingInEdit && formulas.some(f => f.id !== formula.id && f.isActive)) {
-        // 他に有効なフォーミュラがある状態で有効化しようとしている場合
-        setFormulaToActivate(formula.id);
-        setShowActivateConfirm(true);
-        return;
+  const handleSave = async (formulaData: any) => {
+    try {
+      setError(null);
+      if (editingFormula) {
+        // 編集モード
+        const isActivatingInEdit = !editingFormula.is_active && formulaData.isActive;
+        
+        if (isActivatingInEdit && formulas.some(f => f.id !== editingFormula.id && f.is_active)) {
+          // 他に有効なフォーミュラがある状態で有効化しようとしている場合
+          setFormulaToActivate(editingFormula.id);
+          setShowActivateConfirm(true);
+          return;
+        }
+        
+        // フォーミュラを更新
+        await formulaService.updateFormula(editingFormula.id, {
+          name: formulaData.name,
+          template: formulaData.template,
+          variables: formulaData.variables,
+          is_active: formulaData.isActive,
+          summary: formulaData.summary
+        });
+      } else {
+        // 新規作成モード
+        const newFormulaData = {
+          name: formulaData.name,
+          type: 'basic_info' as const,
+          template: formulaData.template,
+          variables: formulaData.variables,
+          is_active: formulaData.isActive,
+          summary: formulaData.summary
+        };
+        
+        // 新規フォーミュラを有効化する場合、他の有効なフォーミュラがあるかチェック
+        if (newFormulaData.is_active && formulas.some(f => f.is_active)) {
+          // 一旦無効状態で作成
+          newFormulaData.is_active = false;
+          const createdFormula = await formulaService.createFormula(newFormulaData);
+          setFormulaToActivate(createdFormula.id);
+          setShowActivateConfirm(true);
+          await loadFormulas();
+          return;
+        }
+        
+        await formulaService.createFormula(newFormulaData);
       }
       
-      setFormulas(formulas.map(f => 
-        f.id === formula.id ? formula : f
-      ));
-    } else {
-      // 新規作成モード
-      const newFormula = {
-        ...formula,
-        id: `formula-${Date.now()}`,
-        type: 'basic_info',
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      
-      // 新規フォーミュラを有効化する場合、他の有効なフォーミュラがあるかチェック
-      if (newFormula.isActive && formulas.some(f => f.isActive)) {
-        newFormula.id = `formula-${Date.now()}`; // IDを設定
-        setFormulaToActivate(newFormula.id);
-        setFormulas([...formulas, {...newFormula, isActive: false}]); // 一旦無効状態で追加
-        setShowActivateConfirm(true);
-        return;
-      }
-      
-      setFormulas([...formulas, newFormula]);
+      await loadFormulas();
+      setShowModal(false);
+    } catch (error) {
+      console.error('フォーミュラの保存エラー:', error);
+      setError('フォーミュラの保存に失敗しました');
     }
-    setShowModal(false);
   };
 
   const confirmDelete = (id: string) => {
@@ -71,9 +107,15 @@ const BasicInfoFormula: React.FC = () => {
     setShowDeleteConfirm(true);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (formulaToDelete) {
-      setFormulas(formulas.filter(f => f.id !== formulaToDelete));
+      try {
+        await formulaService.deleteFormula(formulaToDelete);
+        await loadFormulas();
+      } catch (error) {
+        console.error('フォーミュラの削除エラー:', error);
+        setError('フォーミュラの削除に失敗しました');
+      }
     }
     setShowDeleteConfirm(false);
     setFormulaToDelete(null);
@@ -81,7 +123,7 @@ const BasicInfoFormula: React.FC = () => {
 
   const confirmActivate = (id: string) => {
     // 既に他のフォーミュラが有効な場合は確認モーダルを表示
-    if (formulas.some(f => f.isActive && f.id !== id)) {
+    if (formulas.some(f => f.is_active && f.id !== id)) {
       setFormulaToActivate(id);
       setShowActivateConfirm(true);
     } else {
@@ -90,38 +132,47 @@ const BasicInfoFormula: React.FC = () => {
     }
   };
 
-  const handleActivateConfirm = () => {
+  const handleActivateConfirm = async () => {
     if (formulaToActivate) {
-      // 全てのフォーミュラを無効化してから指定されたフォーミュラだけを有効化
-      setFormulas(formulas.map(f => ({
-        ...f,
-        isActive: f.id === formulaToActivate
-      })));
+      try {
+        await formulaService.activateFormula(formulaToActivate, 'basic_info');
+        await loadFormulas();
+      } catch (error) {
+        console.error('フォーミュラの有効化エラー:', error);
+        setError('フォーミュラの有効化に失敗しました');
+      }
     }
     setShowActivateConfirm(false);
     setFormulaToActivate(null);
     setShowModal(false); // 編集モーダルも閉じる
   };
 
-  const toggleActive = (id: string) => {
+  const toggleActive = async (id: string) => {
     const formula = formulas.find(f => f.id === id);
     
-    if (formula && !formula.isActive) {
-      // 有効化する場合は他のすべてのフォーミュラを無効化
-      setFormulas(formulas.map(f => ({
-        ...f,
-        isActive: f.id === id
-      })));
-    } else if (formula && formula.isActive) {
-      // 現在有効なフォーミュラを無効化
-      setFormulas(formulas.map(f => 
-        f.id === id ? { ...f, isActive: false } : f
-      ));
+    if (formula && !formula.is_active) {
+      try {
+        // 有効化する場合は他のすべてのフォーミュラを無効化
+        await formulaService.activateFormula(id, 'basic_info');
+        await loadFormulas();
+      } catch (error) {
+        console.error('フォーミュラの有効化エラー:', error);
+        setError('フォーミュラの有効化に失敗しました');
+      }
+    } else if (formula && formula.is_active) {
+      try {
+        // 現在有効なフォーミュラを無効化
+        await formulaService.updateFormula(id, { is_active: false });
+        await loadFormulas();
+      } catch (error) {
+        console.error('フォーミュラの無効化エラー:', error);
+        setError('フォーミュラの無効化に失敗しました');
+      }
     }
   };
 
   // 有効なフォーミュラの数をカウント
-  const activeFormulasCount = formulas.filter(f => f.isActive).length;
+  const activeFormulasCount = formulas.filter(f => f.is_active).length;
 
   return (
     <div className="p-0">
@@ -136,7 +187,13 @@ const BasicInfoFormula: React.FC = () => {
         </Button>
       </div>
 
-      {activeFormulasCount === 0 && (
+      {error && (
+        <div className="mb-4 p-3 bg-danger-50 border border-danger-200 text-danger-700 rounded-md">
+          {error}
+        </div>
+      )}
+
+      {!isLoading && activeFormulasCount === 0 && (
         <div className="mb-4 p-3 bg-warning-50 border border-warning-200 text-warning-700 rounded-md flex items-start">
           <AlertCircle size={18} className="mr-2 mt-0.5" />
           <div>
@@ -147,7 +204,14 @@ const BasicInfoFormula: React.FC = () => {
       )}
 
       <div className="space-y-4">
-        {formulas.length === 0 ? (
+        {isLoading ? (
+          <Card>
+            <div className="p-4 text-center text-gray-500">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto mb-2"></div>
+              フォーミュラを読み込み中...
+            </div>
+          </Card>
+        ) : formulas.length === 0 ? (
           <Card>
             <div className="p-4 text-center text-gray-500">
               登録されている基本情報フォーミュラはありません
@@ -166,7 +230,7 @@ const BasicInfoFormula: React.FC = () => {
                 <div className="col-span-3">
                   <div className="flex items-center">
                     <span className="text-sm text-gray-600 mr-2">状態:</span>
-                    {formula.isActive ? (
+                    {formula.is_active ? (
                       <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-success-50 text-success-700">
                         <CheckCircle size={14} className="mr-1" /> 有効
                       </span>
@@ -182,9 +246,9 @@ const BasicInfoFormula: React.FC = () => {
                     variant="outline"
                     size="sm"
                     onClick={() => confirmActivate(formula.id)}
-                    disabled={formula.isActive}
+                    disabled={formula.is_active}
                   >
-                    {formula.isActive ? '有効' : '有効にする'}
+                    {formula.is_active ? '有効' : '有効にする'}
                   </Button>
                   <Button
                     variant="outline"
@@ -199,7 +263,7 @@ const BasicInfoFormula: React.FC = () => {
                     size="sm"
                     onClick={() => confirmDelete(formula.id)}
                     leftIcon={<Trash size={14} />}
-                    disabled={formula.isActive && activeFormulasCount === 1}
+                    disabled={formula.is_active && activeFormulasCount === 1}
                   >
                     削除
                   </Button>

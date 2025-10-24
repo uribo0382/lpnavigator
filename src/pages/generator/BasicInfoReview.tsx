@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, CheckCircle, FileText, AlertCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle, FileText, AlertCircle, Sparkles } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
+import Select from '../../components/ui/Select';
+import { formulaService } from '../../services/formulaService';
+import type { Formula } from '../../services/formulaService';
 
 interface BasicInfoReviewProps {
   answers: Record<string, string>;
@@ -14,7 +17,7 @@ interface BasicInfoReviewProps {
     order: number;
   }>;
   onBack: () => void;
-  onConfirm: () => void;
+  onConfirm: (selectedFormulaId: string) => void;
   selectedModel: string;
   setSelectedModel: (value: string) => void;
   modelOptions: Array<{ value: string; label: string }>;
@@ -30,6 +33,35 @@ const BasicInfoReview: React.FC<BasicInfoReviewProps> = ({
   modelOptions
 }) => {
   const navigate = useNavigate();
+  const [formulas, setFormulas] = useState<Formula[]>([]);
+  const [selectedFormula, setSelectedFormula] = useState<string>('');
+  const [isLoadingFormulas, setIsLoadingFormulas] = useState(true);
+  
+  // フォーミュラを取得
+  useEffect(() => {
+    const loadFormulas = async () => {
+      try {
+        setIsLoadingFormulas(true);
+        const data = await formulaService.getFormulasByType('basic_info');
+        setFormulas(data);
+        
+        // 有効なフォーミュラがあれば自動選択
+        const activeFormula = data.find(f => f.is_active);
+        if (activeFormula) {
+          setSelectedFormula(activeFormula.id);
+        } else if (data.length > 0) {
+          // 有効なものがない場合は最初のものを選択
+          setSelectedFormula(data[0].id);
+        }
+      } catch (error) {
+        console.error('フォーミュラの取得エラー:', error);
+      } finally {
+        setIsLoadingFormulas(false);
+      }
+    };
+    
+    loadFormulas();
+  }, []);
   
   // 必須項目が入力されているか確認
   const checkRequiredAnswers = () => {
@@ -113,6 +145,57 @@ const BasicInfoReview: React.FC<BasicInfoReviewProps> = ({
         </div>
       </Card>
 
+      {/* フォーミュラ選択とモデル選択 */}
+      <Card className="p-4 md:p-6 mb-6">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+          <Sparkles size={20} className="mr-2 text-primary-500" />
+          生成設定
+        </h3>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              基本情報フォーミュラ
+            </label>
+            {isLoadingFormulas ? (
+              <div className="flex items-center justify-center p-4">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-500"></div>
+              </div>
+            ) : formulas.length > 0 ? (
+              <Select
+                value={selectedFormula}
+                onChange={setSelectedFormula}
+                options={formulas.map(formula => ({
+                  value: formula.id,
+                  label: formula.name
+                }))}
+                fullWidth
+              />
+            ) : (
+              <div className="bg-warning-50 border border-warning-200 text-warning-700 p-3 rounded-md">
+                利用可能なフォーミュラがありません
+              </div>
+            )}
+            {selectedFormula && (
+              <div className="mt-2 text-sm text-gray-600">
+                {formulas.find(f => f.id === selectedFormula)?.summary}
+              </div>
+            )}
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              AIモデル
+            </label>
+            <Select
+              value={selectedModel}
+              onChange={setSelectedModel}
+              options={modelOptions}
+              fullWidth
+            />
+          </div>
+        </div>
+      </Card>
+
       <div className="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0 sm:space-x-4 sticky bottom-0 bg-white p-4 border-t shadow-md">
         <Button
           variant="outline"
@@ -126,8 +209,8 @@ const BasicInfoReview: React.FC<BasicInfoReviewProps> = ({
         <Button
           variant="primary"
           leftIcon={<FileText size={16} />}
-          onClick={onConfirm}
-          disabled={!requiredAnswersComplete}
+          onClick={() => onConfirm(selectedFormula)}
+          disabled={!requiredAnswersComplete || !selectedFormula}
           className="w-full sm:w-auto"
         >
           基本情報を生成

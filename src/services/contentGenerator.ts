@@ -10,6 +10,8 @@ interface BasicInfoParams {
   }>;
   provider?: AIProvider;
   model?: string;
+  formulaTemplate?: string;
+  formulaVariables?: string[];
 }
 
 interface GeneratedContent {
@@ -21,7 +23,73 @@ interface GeneratedContent {
 }
 
 /**
- * 基本情報からプロンプトを構築
+ * フォーミュラテンプレートを使用してコンテンツを生成するプロンプトを構築
+ */
+function buildFormulaPrompt(
+  answers: Record<string, string>,
+  questions: Array<{ id: string; text: string; category: string; }>,
+  formulaTemplate: string,
+  formulaVariables: string[]
+): string {
+  const categorizedAnswers: Record<string, Array<{ question: string; answer: string }>> = {};
+
+  // カテゴリごとに質問と回答を整理
+  questions.forEach(q => {
+    const answer = answers[q.id];
+    if (answer && answer.trim()) {
+      if (!categorizedAnswers[q.category]) {
+        categorizedAnswers[q.category] = [];
+      }
+      categorizedAnswers[q.category].push({
+        question: q.text,
+        answer: answer
+      });
+    }
+  });
+
+  // プロンプトの構築
+  let prompt = `あなたはプロのコピーライターです。以下の質問への回答情報を分析し、指定されたフォーミュラテンプレートに厳密に従って基本情報を生成してください。
+
+【重要な指示】
+フォーミュラテンプレートの構造と形式を必ず守ってください。テンプレートに記載されている見出し、箇条書き、セクションの順序をそのまま使用し、{{変数名}}の部分のみを適切な内容に置き換えてください。
+
+【質問と回答情報】
+`;
+
+  // すべての質問と回答を表示
+  questions.forEach(q => {
+    const answer = answers[q.id];
+    if (answer && answer.trim()) {
+      prompt += `\nQ: ${q.text}\nA: ${answer}\n`;
+    }
+  });
+
+  prompt += `\n【使用するフォーミュラテンプレート】
+${formulaTemplate}
+
+【テンプレート変数の説明】
+${formulaVariables.map(v => `{{${v}}}: この部分を質問への回答から適切に埋めてください`).join('\n')}
+
+【厳守事項】
+1. フォーミュラテンプレートの構造を変更しないでください
+2. テンプレートにある見出し（【】で囲まれた部分など）はそのまま使用してください
+3. 箇条書きの形式（- や数字）もテンプレート通りにしてください
+4. {{変数名}}の部分は、質問への回答から最も適切な内容を抽出して置き換えてください
+5. 回答に該当する情報がない変数は、文脈から推測して適切な内容を生成してください
+6. HTML形式で出力する際も、テンプレートの構造を維持してください
+7. 見出しは適切なHTMLタグ（h1, h2, h3）に変換してください
+8. 【】で囲まれた見出しは<h2>タグに、その他の小見出しは<h3>タグにしてください
+9. 箇条書きは<ul><li>タグを使用してください
+10. 重要な部分は<strong>タグで強調してください
+
+【出力形式】
+必ずHTML形式で、フォーミュラテンプレートの構造を完全に維持した基本情報を生成してください。テンプレートから逸脱しないよう注意してください。`;
+
+  return prompt;
+}
+
+/**
+ * 基本情報からプロンプトを構築（従来の方法）
  */
 function buildBasicInfoPrompt(answers: Record<string, string>, questions: Array<{ id: string; text: string; category: string; }>): string {
   const categorizedAnswers: Record<string, Array<{ question: string; answer: string }>> = {};
@@ -120,11 +188,20 @@ export async function generateBasicInfo({
   answers,
   questions,
   provider = 'openai',
-  model
+  model,
+  formulaTemplate,
+  formulaVariables
 }: BasicInfoParams): Promise<GeneratedContent> {
   try {
     // プロンプトの構築
-    const prompt = buildBasicInfoPrompt(answers, questions);
+    let prompt: string;
+    if (formulaTemplate && formulaVariables) {
+      // フォーミュラテンプレートが指定されている場合
+      prompt = buildFormulaPrompt(answers, questions, formulaTemplate, formulaVariables);
+    } else {
+      // 従来の方法
+      prompt = buildBasicInfoPrompt(answers, questions);
+    }
 
     // AIサービスを使用してコンテンツを生成
     const response = await aiService.generateContent(provider, {
@@ -134,12 +211,44 @@ export async function generateBasicInfo({
       maxTokens: 3000
     });
 
+    // レスポンスコンテンツのクリーンアップ
+    let cleanedContent = response.content;
+    
+    // コンテンツが存在する場合のみクリーンアップ
+    if (cleanedContent) {
+      // ```html で始まる場合の処理
+      if (cleanedContent.trim().startsWith('```html')) {
+        // ```html の開始位置を見つける
+        const startIndex = cleanedContent.indexOf('```html');
+        if (startIndex !== -1) {
+          cleanedContent = cleanedContent.substring(startIndex + 7); // ```html の長さ分削除
+        }
+      }
+      
+      // ``` で終わる場合の処理
+      if (cleanedContent.trim().endsWith('```')) {
+        // 最後の ``` の位置を見つける
+        const endIndex = cleanedContent.lastIndexOf('```');
+        if (endIndex !== -1) {
+          cleanedContent = cleanedContent.substring(0, endIndex);
+        }
+      }
+      
+      // 両端の空白文字を削除
+      cleanedContent = cleanedContent.trim();
+    }
+    
+    // コンテンツが空の場合はエラー
+    if (!cleanedContent) {
+      throw new Error('生成されたコンテンツが空です。');
+    }
+
     // メタデータの抽出
-    const { title, metaDescription, permalink } = extractMetadata(response.content);
+    const { title, metaDescription, permalink } = extractMetadata(cleanedContent);
 
     return {
       title,
-      content: response.content,
+      content: cleanedContent,
       metaDescription,
       permalink,
       createdAt: new Date()
@@ -157,12 +266,14 @@ export async function generateAdCopy({
   basicInfo,
   style,
   provider = 'openai',
-  model
+  model,
+  maxTokens = 8192  // maxTokensパラメータを追加
 }: {
   basicInfo: string;
   style: string;
   provider?: AIProvider;
   model?: string;
+  maxTokens?: number;  // maxTokensの型定義を追加
 }): Promise<string> {
   const prompt = `以下の基本情報を基に、${style}スタイルの魅力的な広告文を生成してください。
 
@@ -185,7 +296,7 @@ ${basicInfo}
       prompt,
       model,
       temperature: 0.8,
-      maxTokens: 500
+      maxTokens: maxTokens  // 外部から指定されたmaxTokensを使用
     });
 
     return response.content;
@@ -209,30 +320,61 @@ export async function generateLPArticle({
   provider?: AIProvider;
   model?: string;
 }): Promise<string> {
-  const prompt = `以下の基本情報とテンプレートを基に、完全なランディングページ記事を生成してください。
-
-【基本情報】
-${basicInfo}
-
-【テンプレート】
-${template}
-
-【要件】
-- SEOに最適化された構造
-- 読みやすく魅力的な文章
-- 適切なHTML要素の使用
-- 明確なコンバージョンパス
-`;
+  // basicInfoには既に完全なプロンプトが含まれているため、そのまま使用
+  const prompt = basicInfo;
 
   try {
     const response = await aiService.generateContent(provider, {
       prompt,
       model,
-      temperature: 0.7,
-      maxTokens: 4000
+      temperature: 0.8, // より創造的で長文な出力のため高めに設定
+      maxTokens: 8192 // 最大トークン数を最大値に設定
     });
 
-    return response.content;
+    let content = response.content;
+
+    // AIの前置きや応答部分を除去
+    // 一般的な前置きパターンを検出して除去
+    const prefixPatterns = [
+      /^(はい、)?承知(いた)?しました。?[\s\S]*?LP記事を(作成|書き上げ|執筆)(します|いたします)。?\s*\n+/i,
+      /^わかりました。?[\s\S]*?LP記事を(作成|書き上げ|執筆)(します|いたします)。?\s*\n+/i,
+      /^了解(いた)?しました。?[\s\S]*?LP記事を(作成|書き上げ|執筆)(します|いたします)。?\s*\n+/i,
+      /^(それでは、)?[\s\S]*?LP記事を(お届け|ご提供|作成)(します|いたします)。?\s*\n+/i,
+      /^以下(が|に)、?[\s\S]*?LP記事(です|になります|をお届けします)。?\s*\n+/i,
+    ];
+
+    // 各パターンをチェックして除去
+    for (const pattern of prefixPatterns) {
+      content = content.replace(pattern, '');
+    }
+
+    // HTMLタグ（特に<h1>）が始まるまでの部分を除去
+    const htmlStartMatch = content.match(/(<h1[^>]*>)/);
+    if (htmlStartMatch && htmlStartMatch.index && htmlStartMatch.index > 0) {
+      // <h1>タグより前に10文字以上のテキストがある場合は、それを前置きと判断して除去
+      const textBeforeH1 = content.substring(0, htmlStartMatch.index).trim();
+      if (textBeforeH1.length > 10) {
+        content = content.substring(htmlStartMatch.index);
+      }
+    }
+
+    // 最後の締めくくりや後書きを除去
+    const suffixPatterns = [
+      /\n+以上が[\s\S]*?LP記事(です|になります|でした)。?[\s\S]*$/i,
+      /\n+この(LP)?記事は[\s\S]*?(ください|います|ました)。?[\s\S]*$/i,
+      /\n+いかがでしたか。?[\s\S]*$/i,
+      /\n+お役に立てれば幸いです。?[\s\S]*$/i,
+    ];
+
+    // 各パターンをチェックして除去
+    for (const pattern of suffixPatterns) {
+      content = content.replace(pattern, '');
+    }
+
+    // 前後の余分な空白を除去
+    content = content.trim();
+
+    return content;
   } catch (error) {
     console.error('LP記事生成エラー:', error);
     throw new Error('LP記事の生成に失敗しました。');

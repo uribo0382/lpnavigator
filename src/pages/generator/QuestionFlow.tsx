@@ -7,9 +7,15 @@ import TextArea from '../../components/ui/TextArea';
 import Select from '../../components/ui/Select';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import BasicInfoReview from './BasicInfoReview';
-import { mockQuestions } from '../../utils/mockData';
 import { generateBasicInfo } from '../../services/contentGenerator';
 import type { AIProvider } from '../../services/ai';
+import aiService from '../../services/ai';
+import { getActiveQuestions, createQuestionSession, saveAllAnswers, completeSession, saveBasicInfo } from '../../services/questionsService';
+import type { Question } from '../../services/questionsService';
+import { useAuthFixed as useAuth } from '../../contexts/AuthContextFixed';
+import { contentHistoryService } from '../../services/contentHistoryService';
+import { supabase, refreshSession } from '../../lib/supabase';
+import { formulaService } from '../../services/formulaService';
 
 interface QuestionFlowProps {
   onContentGenerated: (content: {
@@ -31,6 +37,7 @@ const modelOptions = [
   { value: 'anthropic:claude-3-5-sonnet-latest', label: 'Claude 3.5 Sonnet (Anthropic) - 有料' },
   { value: 'anthropic:claude-3-5-haiku-latest', label: 'Claude 3.5 Haiku (Anthropic) - 有料' },
   { value: 'google:gemini-2.0-flash', label: 'Gemini 2.0 Flash (Google) - 無料' },
+  { value: 'google:gemini-2.5-flash', label: 'Gemini 2.5 Flash (Google) - 無料' },
 ];
 
 // アクティブな質問のインデックスを解析するヘルパー関数
@@ -63,17 +70,6 @@ interface SavedData {
   answers: Record<string, string>;
 }
 
-// 必須フラグを追加して質問型を拡張
-interface Question {
-  id: string;
-  text: string;
-  category: string;
-  helperText?: string;
-  order: number;
-  isActive: boolean;
-  sampleAnswer?: string;
-  isRequired: boolean;
-}
 
 const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
   const navigate = useNavigate();
@@ -83,18 +79,10 @@ const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedModel, setSelectedModel] = useState('openai:gpt-4o-mini');
-  const [questions] = useState<Question[]>(() => {
-    const processedQuestions = mockQuestions
-      .map(q => ({
-        ...q,
-        isActive: q.isActive === undefined ? false : q.isActive,
-        order: q.order === undefined ? 0 : q.order,
-        isRequired: q.isRequired === undefined ? false : q.isRequired,
-      }))
-      .filter(q => q.isActive === true)
-      .sort((a, b) => a.order - b.order);
-    return processedQuestions as Question[];
-  });
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [questionsLoading, setQuestionsLoading] = useState(true);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const { currentUser } = useAuth();
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [redirectToSaved, setRedirectToSaved] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -167,34 +155,103 @@ const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
     }
   }, [isGenerating, generationComplete]);
 
+  // 質問データを取得
+  useEffect(() => {
+    const loadQuestions = async () => {
+      try {
+        console.log('QuestionFlow: loadQuestions開始');
+        setQuestionsLoading(true);
+        
+        const activeQuestions = await getActiveQuestions();
+        console.log('QuestionFlow: 取得した質問', activeQuestions);
+        
+        // order_numberでソート済みの質問を設定
+        setQuestions(activeQuestions);
+      } catch (error) {
+        console.error('質問データ読み込みエラー:', error);
+        setAlertMessage('質問データの読み込みに失敗しました。');
+        setShowAlertDialog(true);
+      } finally {
+        setQuestionsLoading(false);
+      }
+    };
+
+    loadQuestions();
+  }, []); // 依存配列を空にして、初回のみ実行
+
+  // セッション作成（別のuseEffectで管理）
+  useEffect(() => {
+    const createSession = async () => {
+      if (currentUser && questions.length > 0 && !sessionId) {
+        try {
+          console.log('QuestionFlow: セッション作成開始', currentUser.id);
+          const session = await createQuestionSession(currentUser.id);
+          setSessionId(session.id);
+          console.log('QuestionFlow: セッション作成完了', session.id);
+        } catch (error) {
+          console.error('セッション作成エラー:', error);
+          // セッション作成エラーは質問表示をブロックしない
+        }
+      }
+    };
+
+    createSession();
+  }, [currentUser, questions.length, sessionId]);
+
   // 初期化時に保存データから回答を読み込み、フォームに反映
   useEffect(() => {
-    let initialAnswers: Record<string, string> = {};
-    const fromHistory = location.state?.fromHistory;
-    const savedDataId = location.state?.savedDataId;
-    if (fromHistory && savedDataId) {
-      const savedListStr = localStorage.getItem('lp_navigator_saved_list') || '[]';
-      try {
-        const savedList: SavedData[] = JSON.parse(savedListStr);
-        const target = savedList.find(item => item.id === savedDataId);
-        if (target) {
-          initialAnswers = target.answers;
-          // localStorageにも保持
-          localStorage.setItem('lp_navigator_answers', JSON.stringify(initialAnswers));
+    const loadSavedData = async () => {
+      let initialAnswers: Record<string, string> = {};
+      const fromHistory = location.state?.fromHistory;
+      const savedDataId = location.state?.savedDataId;
+      
+      if (fromHistory && savedDataId && currentUser) {
+        try {
+          // Supabaseから保存データを取得
+          const savedData = await contentHistoryService.getSavedContentById(savedDataId);
+          
+          if (savedData && savedData.user_id === currentUser.id) {
+            initialAnswers = savedData.answers;
+            
+            // セッション情報があれば復元
+            if (savedData.session_data?.sessionId) {
+              setSessionId(savedData.session_data.sessionId);
+            }
+            if (savedData.session_data?.selectedModel) {
+              setSelectedModel(savedData.session_data.selectedModel);
+            }
+            
+            // localStorageにも保持
+            localStorage.setItem('lp_navigator_answers', JSON.stringify(initialAnswers));
+          }
+        } catch (e) {
+          console.error('保存データの読み込み失敗:', e);
+          // フォールバックとしてlocalStorageから読み込み
+          const savedAnswers = localStorage.getItem('lp_navigator_answers');
+          if (savedAnswers) {
+            try {
+              initialAnswers = JSON.parse(savedAnswers);
+            } catch {}
+          }
         }
-      } catch (e) {
-        console.error('保存データの読み込み失敗:', e);
+      } else {
+        // 通常の初期化時はlocalStorageから読み込み
+        const savedAnswers = localStorage.getItem('lp_navigator_answers');
+        if (savedAnswers) {
+          try {
+            initialAnswers = JSON.parse(savedAnswers);
+          } catch {}
+        }
       }
-    }
-    // 回答をセット
-    setAnswers(initialAnswers);
-    // HashRouterを使用している場合は、ハッシュから質問番号を読み取らない
-    // const hashIndex = parseActiveQuestion(window.location.hash);
-    // setActiveQuestionIndex(hashIndex < questions.length ? hashIndex : 0);
+      
+      // 回答をセット
+      setAnswers(initialAnswers);
+      // 常に最初の質問から始める
+      setActiveQuestionIndex(0);
+    };
     
-    // 常に最初の質問から始める
-    setActiveQuestionIndex(0);
-  }, []);
+    loadSavedData();
+  }, [currentUser, location.state]);
   
   // アクティブな質問が変更されたときにURLハッシュを更新
   useEffect(() => {
@@ -219,7 +276,7 @@ const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
   }, [activeQuestionIndex]);
 
   const currentQuestion = questions[activeQuestionIndex];
-  const currentAnswer = answers[currentQuestion.id] || '';
+  const currentAnswer = currentQuestion ? answers[currentQuestion.id] || '' : '';
   const isLastQuestion = activeQuestionIndex === questions.length - 1;
 
   // 再レンダー後にキャレット位置を再設定
@@ -273,8 +330,8 @@ const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
 
   // 模範回答を自動入力するための関数
   const fillSampleAnswer = () => {
-    if (currentQuestion?.sampleAnswer) {
-      handleAnswerChange(currentQuestion.id, currentQuestion.sampleAnswer);
+    if (currentQuestion?.sample_answer) {
+      handleAnswerChange(currentQuestion.id, currentQuestion.sample_answer);
     }
   };
 
@@ -283,8 +340,8 @@ const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
     const newAnswers = { ...answers };
     
     questions.forEach(question => {
-      if (question.sampleAnswer) {
-        newAnswers[question.id] = question.sampleAnswer;
+      if (question.sample_answer) {
+        newAnswers[question.id] = question.sample_answer;
       }
     });
     
@@ -308,7 +365,7 @@ const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
   // 必須質問への回答をチェック
   const checkRequiredAnswers = () => {
     const unansweredRequired = questions.filter(q => 
-      q.isRequired && (!answers[q.id] || answers[q.id].trim() === '')
+      q.is_required && (!answers[q.id] || answers[q.id].trim() === '')
     );
     return unansweredRequired.length === 0;
   };
@@ -337,22 +394,69 @@ const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
     setShowReview(false);
   };
 
+  // 選択されたフォーミュラIDを保存する状態を追加
+  const [selectedFormulaId, setSelectedFormulaId] = useState<string>('');
+  
   // 確認画面から基本情報生成の確認ダイアログを表示
-  const handleConfirmFromReview = () => {
+  const handleConfirmFromReview = (formulaId: string) => {
+    setSelectedFormulaId(formulaId);
     setShowReview(false);
     setShowGenerateConfirmDialog(true);
   };
 
   // LP記事生成ロジックの修正版
   const executeGenerateContent = async () => {
+    if (!currentUser) {
+      setAlertMessage('コンテンツを生成するにはログインが必要です。');
+      setShowAlertDialog(true);
+      return;
+    }
+
+    // セッションがまだない場合は作成
+    let currentSessionId = sessionId;
+    if (!currentSessionId) {
+      try {
+        const session = await createQuestionSession(currentUser.id);
+        currentSessionId = session.id;
+        setSessionId(session.id);
+      } catch (error) {
+        console.error('セッション作成エラー:', error);
+        setAlertMessage('セッションの作成に失敗しました。');
+        setShowAlertDialog(true);
+        return;
+      }
+    }
+
     setIsGenerating(true);
     setGenerationComplete(false);
     setAnimationProgress(0);
     setShowCompletedAnimation(false);
     
     try {
+      // セッションに回答を保存
+      await saveAllAnswers(currentSessionId, answers);
+      
       // モデル選択から provider と model を分離
       const [provider, model] = selectedModel.split(':') as [AIProvider, string];
+      
+      // 選択されたフォーミュラを取得
+      let formulaTemplate: string | undefined;
+      let formulaVariables: string[] | undefined;
+      
+      if (selectedFormulaId) {
+        try {
+          const formulas = await formulaService.getFormulasByType('basic_info');
+          const selectedFormula = formulas.find(f => f.id === selectedFormulaId);
+          
+          if (selectedFormula) {
+            formulaTemplate = selectedFormula.template;
+            formulaVariables = selectedFormula.variables;
+          }
+        } catch (error) {
+          console.error('フォーミュラ取得エラー:', error);
+          // エラーが発生してもデフォルトの方法で続行
+        }
+      }
       
       // AI APIを使用してコンテンツを生成
       const generatedContent = await generateBasicInfo({
@@ -363,8 +467,22 @@ const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
           category: q.category
         })),
         provider,
-        model
+        model,
+        formulaTemplate,
+        formulaVariables
       });
+
+      // 基本情報をSupabaseに保存
+      await saveBasicInfo(currentUser.id, currentSessionId, {
+        title: generatedContent.title,
+        content: generatedContent.content,
+        summary: generatedContent.metaDescription,
+        generated_by: selectedModel,
+        formula_id: selectedFormulaId || undefined
+      });
+      
+      // セッションを完了にマーク
+      await completeSession(currentSessionId);
 
       // 生成完了状態にする
       setGenerationComplete(true);
@@ -449,44 +567,103 @@ const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
   }, [hasAnswers]);
 
   // 途中保存用の関数を拡張
-  const handleSaveProgress = () => {
-    // 現在の保存リストを取得
-    const savedListStr = localStorage.getItem('lp_navigator_saved_list') || '[]';
-    let savedList: SavedData[] = [];
-    
-    try {
-      savedList = JSON.parse(savedListStr);
-    } catch (e) {
-      console.error('Failed to parse saved list:', e);
+  const handleSaveProgress = async () => {
+    if (!currentUser) {
+      setAlertMessage('保存するにはログインが必要です。');
+      setShowAlertDialog(true);
+      return;
     }
-    
-    // 新しい保存データを作成
-    const newSaveData: SavedData = {
-      id: Date.now().toString(),
-      title: `LP記事 (${new Date().toLocaleDateString()})`,
-      date: new Date().toISOString(),
-      progress: calculateProgress(),
-      answers: { ...answers }
-    };
-    
-    // リストに追加
-    savedList.push(newSaveData);
-    
-    // ローカルストレージに保存
-    localStorage.setItem('lp_navigator_saved_list', JSON.stringify(savedList));
-    localStorage.setItem('lp_navigator_answers', JSON.stringify(answers));
-    localStorage.setItem('lp_navigator_last_saved', newSaveData.id);
-    
-    // 成功メッセージを表示
-    setShowSuccessMessage(true);
-    
-    // 保存リスト画面に遷移（少し遅延させる）
-    setTimeout(() => {
-      setShowSuccessMessage(false);
-      // 保存データタブが選択された状態で遷移
-      localStorage.setItem('lp_navigator_history_tab', 'saved');
-      navigate('/generator/history', { replace: true });
-    }, 1000);
+
+    // セッションがまだない場合は作成
+    let currentSessionId = sessionId;
+    if (!currentSessionId) {
+      try {
+        const session = await createQuestionSession(currentUser.id);
+        currentSessionId = session.id;
+        setSessionId(session.id);
+      } catch (error) {
+        console.error('セッション作成エラー:', error);
+        const errorMessage = error instanceof Error ? error.message : '不明なエラー';
+        setAlertMessage(`セッションの作成に失敗しました: ${errorMessage}`);
+        setShowAlertDialog(true);
+        return;
+      }
+    }
+
+    try {
+      setIsLoading(true);
+      
+      // セッションをリフレッシュ
+      try {
+        await refreshSession();
+      } catch (error) {
+        console.error('セッションリフレッシュエラー:', error);
+        // リフレッシュに失敗してもログは出すだけで続行
+      }
+      
+      // Supabaseに回答を保存
+      // 一時的にコメントアウトして、saved_contentsテーブルへの保存のみテスト
+      // await saveAllAnswers(currentSessionId, answers);
+      
+      // タイトルを生成
+      const title = `LP記事 (${new Date().toLocaleDateString('ja-JP')})`;
+      const progress = Math.round(calculateProgress());
+      
+      // saved_contentsテーブルに保存
+      const sessionData = {
+        sessionId: currentSessionId,
+        activeQuestionIndex,
+        selectedModel
+      };
+      
+      // 既存の保存データのIDを確認
+      const savedDataId = location.state?.savedDataId;
+      
+      // 現在の認証情報を確認
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log('Auth user:', user?.id, 'Current user:', currentUser.id);
+      
+      console.log('保存処理開始', {
+        userId: currentUser.id,
+        authUserId: user?.id,
+        sessionId: currentSessionId,
+        savedDataId,
+        answersCount: Object.keys(answers).length
+      });
+      
+      const savedData = await contentHistoryService.saveDraftContent(
+        currentUser.id,
+        title,
+        answers,
+        progress,
+        sessionData,
+        savedDataId
+      );
+      
+      console.log('保存成功', savedData);
+      
+      // ローカルストレージにも保存（バックアップ）
+      localStorage.setItem('lp_navigator_answers', JSON.stringify(answers));
+      localStorage.setItem('lp_navigator_last_saved', currentSessionId);
+      
+      // 成功メッセージを表示
+      setShowSuccessMessage(true);
+      
+      // 保存リスト画面に遷移（少し遅延させる）
+      setTimeout(() => {
+        setShowSuccessMessage(false);
+        // 保存データタブが選択された状態で遷移
+        localStorage.setItem('lp_navigator_history_tab', 'saved');
+        navigate('/generator/history', { replace: true });
+      }, 1000);
+    } catch (error) {
+      console.error('保存エラー:', error);
+      const errorMessage = error instanceof Error ? error.message : '不明なエラー';
+      setAlertMessage(`保存に失敗しました: ${errorMessage}`);
+      setShowAlertDialog(true);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // 保存画面への遷移処理
@@ -505,57 +682,52 @@ const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
   }, [redirectToSaved, navigate]);
 
   // AIによる添削処理
-  const handleAiEdit = () => {
+  const handleAiEdit = async () => {
     if (!currentAnswer.trim()) {
       setAlertMessage('添削するテキストを入力してください。');
       setShowAlertDialog(true);
       return;
     }
 
+    if (!currentQuestion) return;
+
     setAiEditing(true);
 
-    // AI添削のシミュレーション（実際の実装ではAPIを呼び出す）
-    setTimeout(() => {
-      const enhancedText = simulateAiEnhancement(currentAnswer);
-      setAiEditedText(enhancedText);
+    try {
+      // Gemini APIを使用してAI添削
+      const prompt = `あなたはLP作成のプロです。今、LPを作るための情報の整理を行なっている過程で、次の質問に答えようとしています。
+
+質問内容：${currentQuestion.text}
+
+そして、今途中まで入力した答えが次の通りです
+${currentAnswer}
+
+これをより解像度の高い回答にするために、内容を読み取り、情報に過不足がないか確かめ、不足している内容を補い、より体系的に整理された回答にして出力してください`;
+      
+      const response = await aiService.generateContent('google', {
+        prompt,
+        model: 'gemini-2.0-flash',
+        temperature: 0.7,
+        maxTokens: 500
+      });
+      
+      setAiEditedText(response.content);
       setShowAiSuggestion(true);
+    } catch (error) {
+      console.error('AI添削エラー:', error);
+      setAlertMessage('AI添削処理に失敗しました。もう一度お試しください。');
+      setShowAlertDialog(true);
+    } finally {
       setAiEditing(false);
-    }, 1500);
-  };
-
-  // AI添削のシミュレーション関数
-  const simulateAiEnhancement = (text: string) => {
-    // この部分は実際のAPIと置き換えます
-    const improvements = [
-      { type: '表現の改善', original: '良い', enhanced: '優れた' },
-      { type: '文章の充実', original: 'です。', enhanced: 'であり、お客様満足度No.1を獲得しています。' },
-      { type: '説得力向上', original: 'あります', enhanced: '豊富に取り揃えております' },
-      { type: '専門用語追加', original: '効果', enhanced: '効果（コンバージョン率向上）' }
-    ];
-
-    let enhancedText = text;
-    improvements.forEach(item => {
-      if (text.includes(item.original)) {
-        enhancedText = enhancedText.replace(
-          item.original, 
-          `<span class="bg-green-100 text-green-800 px-1 rounded" title="${item.type}">${item.enhanced}</span>`
-        );
-      }
-    });
-
-    // 文章末に補足を追加
-    if (!enhancedText.endsWith('.') && !enhancedText.endsWith('。')) {
-      enhancedText += '<span class="bg-blue-100 text-blue-800 px-1 rounded" title="補足情報の追加">。さらに詳しい情報はお問い合わせください。</span>';
     }
-
-    return enhancedText;
   };
+
 
   // AI添削結果を適用
   const applyAiSuggestion = () => {
-    // HTMLタグを取り除いた純粋なテキストを取得
-    const plainText = aiEditedText.replace(/<[^>]*>/g, '');
-    handleAnswerChange(currentQuestion.id, plainText);
+    if (currentQuestion) {
+      handleAnswerChange(currentQuestion.id, aiEditedText);
+    }
     setShowAiSuggestion(false);
   };
 
@@ -688,6 +860,32 @@ const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
     );
   }
 
+  // 質問データがロード中の場合
+  if (questionsLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
+          <p className="text-gray-500">質問データを読み込み中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 質問データが空の場合
+  if (questions.length === 0) {
+    console.log('QuestionFlow: questions.length === 0', { questionsLoading });
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <AlertCircle size={48} className="text-gray-400 mx-auto mb-4" />
+          <p className="text-gray-500">表示できる質問がありません。</p>
+          <p className="text-gray-400 text-sm mt-2">Supabaseのquestionsテーブルにデータが存在し、is_activeがtrueに設定されているか確認してください。</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-gray-800 mb-6">基本情報の作成</h1>
@@ -793,7 +991,7 @@ const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
                 // 状態の確認
                 const isActive = activeQuestionIndex === index;
                 const isCompleted = answers[q.id] && answers[q.id].trim() !== '';
-                const isRequired = q.isRequired;
+                const isRequired = q.is_required;
                 
                 return (
                   <button
@@ -845,10 +1043,10 @@ const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
           <div className="flex justify-between items-center mb-2">
             <h3 className="text-lg font-medium text-gray-900 flex items-center">
               {currentQuestion?.text}
-              {currentQuestion?.isRequired && (
+              {currentQuestion?.is_required && (
                 <span className="text-red-500 font-bold ml-1">*</span>
               )}
-              {!currentQuestion?.isRequired && (
+              {!currentQuestion?.is_required && (
                 <span className="text-gray-400 text-sm ml-2">(任意)</span>
               )}
             </h3>
@@ -873,9 +1071,9 @@ const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
               </Button>
             </div>
           </div>
-          {currentQuestion?.helperText && (
+          {currentQuestion?.helper_text && (
             <p className="text-sm text-gray-500 mb-4">
-              {currentQuestion.helperText}
+              {currentQuestion.helper_text}
             </p>
           )}
           
@@ -904,10 +1102,9 @@ const QuestionFlow: React.FC<QuestionFlowProps> = ({ onContentGenerated }) => {
                   </Button>
                 </div>
               </div>
-              <div 
-                className="p-3 bg-white rounded border border-gray-200 text-gray-800"
-                dangerouslySetInnerHTML={{ __html: aiEditedText }}
-              />
+              <div className="p-3 bg-white rounded border border-gray-200">
+                <p className="text-gray-800 whitespace-pre-wrap">{aiEditedText}</p>
+              </div>
             </div>
           )}
           

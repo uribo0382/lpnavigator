@@ -27,7 +27,7 @@ export async function generateContent({
   prompt,
   model = 'gemini-2.0-flash',
   temperature = 0.7,
-  maxTokens = 2000,
+  maxTokens = 8192,  // デフォルト値を8192トークンに増加（Gemini 2.0 Flash の上限）
 }: GenerateContentParams): Promise<GenerateContentResponse> {
   try {
     const generativeModel = genAI.getGenerativeModel({ 

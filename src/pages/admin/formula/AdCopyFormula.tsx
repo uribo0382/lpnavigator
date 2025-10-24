@@ -1,19 +1,38 @@
-import React, { useState } from 'react';
-import { Plus, Edit, Trash, CheckCircle, XCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Edit, Trash, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import Button from '../../../components/ui/Button';
 import Card from '../../../components/ui/Card';
 import Modal from '../../../components/ui/Modal';
-import { mockFormulas } from '../../../utils/mockData';
+import { formulaService } from '../../../services/formulaService';
 import FormulaEditor from './FormulaEditor';
 
 const AdCopyFormula: React.FC = () => {
-  const [formulas, setFormulas] = useState(
-    mockFormulas.filter(formula => formula.type === 'ad_copy')
-  );
+  const [formulas, setFormulas] = useState<any[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingFormula, setEditingFormula] = useState<any>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [formulaToDelete, setFormulaToDelete] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // フォーミュラデータを取得
+  useEffect(() => {
+    fetchFormulas();
+  }, []);
+
+  const fetchFormulas = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const data = await formulaService.getFormulasByType('ad_copy');
+      setFormulas(data);
+    } catch (err) {
+      console.error('Error fetching formulas:', err);
+      setError('フォーミュラの取得に失敗しました。');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleCreateNew = () => {
     setEditingFormula(null);
@@ -25,24 +44,29 @@ const AdCopyFormula: React.FC = () => {
     setShowModal(true);
   };
 
-  const handleSave = (formula: any) => {
-    if (editingFormula) {
-      // 編集モード
-      setFormulas(formulas.map(f => 
-        f.id === formula.id ? formula : f
-      ));
-    } else {
-      // 新規作成モード
-      const newFormula = {
-        ...formula,
-        id: `formula-${Date.now()}`,
-        type: 'ad_copy',
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      setFormulas([...formulas, newFormula]);
+  const handleSave = async (formula: any) => {
+    try {
+      setError(null);
+      
+      if (editingFormula) {
+        // 編集モード
+        await formulaService.updateFormula(formula.id, formula);
+      } else {
+        // 新規作成モード
+        const newFormula = {
+          ...formula,
+          type: 'ad_copy',
+          is_active: formula.isActive || false
+        };
+        await formulaService.createFormula(newFormula);
+      }
+      
+      setShowModal(false);
+      await fetchFormulas(); // データを再取得
+    } catch (err) {
+      console.error('Error saving formula:', err);
+      setError('フォーミュラの保存に失敗しました。');
     }
-    setShowModal(false);
   };
 
   const confirmDelete = (id: string) => {
@@ -50,35 +74,70 @@ const AdCopyFormula: React.FC = () => {
     setShowDeleteConfirm(true);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (formulaToDelete) {
-      setFormulas(formulas.filter(f => f.id !== formulaToDelete));
+      try {
+        setError(null);
+        await formulaService.deleteFormula(formulaToDelete);
+        await fetchFormulas(); // データを再取得
+      } catch (err) {
+        console.error('Error deleting formula:', err);
+        setError('フォーミュラの削除に失敗しました。');
+      }
     }
     setShowDeleteConfirm(false);
     setFormulaToDelete(null);
   };
 
-  const toggleActive = (id: string) => {
-    setFormulas(formulas.map(f => 
-      f.id === id ? { ...f, isActive: !f.isActive } : f
-    ));
+  const toggleActive = async (id: string) => {
+    try {
+      setError(null);
+      await formulaService.toggleActive(id);
+      await fetchFormulas(); // データを再取得
+    } catch (err) {
+      console.error('Error toggling formula active state:', err);
+      setError('状態の切り替えに失敗しました。');
+    }
   };
 
   return (
     <div className="p-0">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">広告文フォーミュラ管理</h1>
-        <Button
-          variant="primary"
-          onClick={handleCreateNew}
-          leftIcon={<Plus size={16} />}
-        >
-          新規作成
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            onClick={fetchFormulas}
+            leftIcon={<RefreshCw size={16} />}
+            isLoading={isLoading}
+          >
+            更新
+          </Button>
+          <Button
+            variant="primary"
+            onClick={handleCreateNew}
+            leftIcon={<Plus size={16} />}
+          >
+            新規作成
+          </Button>
+        </div>
       </div>
 
+      {error && (
+        <Card className="mb-4 p-4 bg-red-50 border-red-200">
+          <p className="text-red-700">{error}</p>
+        </Card>
+      )}
+
       <div className="space-y-4">
-        {formulas.length === 0 ? (
+        {isLoading ? (
+          <Card>
+            <div className="p-8 text-center">
+              <RefreshCw className="animate-spin mx-auto mb-4 text-gray-400" size={32} />
+              <p className="text-gray-500">読み込み中...</p>
+            </div>
+          </Card>
+        ) : formulas.length === 0 ? (
           <Card>
             <div className="p-4 text-center text-gray-500">
               登録されている広告文フォーミュラはありません

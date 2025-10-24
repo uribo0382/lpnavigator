@@ -15,6 +15,7 @@ import QuestionsManagement from './pages/admin/QuestionsManagement';
 import QuestionEditor from './pages/admin/QuestionEditor';
 import UsersManagement from './pages/admin/UsersManagement';
 import UserEditor from './pages/admin/UserEditor';
+import TestUsersData from './pages/admin/TestUsersData';
 import ApiSettings from './pages/admin/ApiSettings';
 import Analytics from './pages/admin/Analytics';
 import FormulaManagement from './pages/admin/formula/FormulaManagement';
@@ -193,6 +194,14 @@ function App() {
                 element={
                   <ProtectedRouteComponent requiredRole="admin">
                     <UserEditor />
+                  </ProtectedRouteComponent>
+                }
+              />
+              <Route
+                path="/admin/test-users"
+                element={
+                  <ProtectedRouteComponent requiredRole="admin">
+                    <TestUsersData />
                   </ProtectedRouteComponent>
                 }
               />

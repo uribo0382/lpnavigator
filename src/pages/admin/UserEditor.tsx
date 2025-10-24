@@ -5,30 +5,9 @@ import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
-import { mockUsers } from '../../utils/mockData';
+import { userService, User } from '../../services/userService';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
-// ユーザー型定義
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: 'admin' | 'user';
-  plan: string;
-  isActive: boolean;
-  createdAt: Date;
-  lastLoginAt?: Date;
-  company?: string;
-  position?: string;
-  phone?: string;
-  notes?: string;
-  usageLimit?: number;
-  apiAccess?: boolean;
-  usage?: {
-    lpGenerated: number;
-    apiCalls: number;
-  };
-}
 
 // ユーザー情報の型定義を拡張
 interface UserForm {
@@ -85,22 +64,22 @@ const UserEditor: React.FC = () => {
 
   // ユーザーデータの取得
   useEffect(() => {
-    if (isEditing) {
+    console.log('UserEditor - isEditing:', isEditing, 'id:', id);
+    if (isEditing && id) {
       fetchUserData();
     }
   }, [id, isEditing]);
 
-  // ユーザーデータ取得（モック）
+  // ユーザーデータ取得
   const fetchUserData = async () => {
     setIsFetching(true);
     
     try {
-      // APIコールをシミュレート
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // Supabaseからユーザーデータを取得
+      const user = await userService.getUserById(id || '');
       
-      // モックデータからユーザーを検索
-      const user = mockUsers.find(u => u.id === id) as User | undefined;
       if (user) {
+        console.log('Fetched user for editing:', user);
         setFormData({
           name: user.name || '',
           email: user.email || '',
@@ -112,11 +91,15 @@ const UserEditor: React.FC = () => {
           phone: user.phone || '',
         });
       } else {
-        setShowSuccessMessage('ユーザーが見つかりません。新規ユーザーとして登録します。');
+        setShowSuccessMessage('ユーザーが見つかりません。');
+        // 3秒後にユーザー一覧に戻る
+        setTimeout(() => {
+          navigate('/admin/users');
+        }, 3000);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch user data:', error);
-      setShowSuccessMessage('ユーザーデータの取得中にエラーが発生しました。');
+      setShowSuccessMessage(`ユーザーデータの取得中にエラーが発生しました: ${error.message}`);
     } finally {
       setIsFetching(false);
     }
@@ -174,8 +157,33 @@ const UserEditor: React.FC = () => {
     setIsLoading(true);
     
     try {
-      // APIコールをシミュレート
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (isEditing && id) {
+        // ユーザー情報を更新
+        const updatedUser = await userService.updateUser(id, {
+          name: formData.name,
+          email: formData.email,
+          role: formData.role,
+          plan: formData.plan,
+          isActive: formData.isActive,
+          company: formData.company,
+          position: formData.position,
+          phone: formData.phone
+        });
+        console.log('User updated:', updatedUser);
+      } else {
+        // 新規ユーザーを作成
+        const newUser = await userService.createUser({
+          name: formData.name,
+          email: formData.email,
+          role: formData.role,
+          plan: formData.plan,
+          isActive: formData.isActive,
+          company: formData.company,
+          position: formData.position,
+          phone: formData.phone
+        });
+        console.log('User created:', newUser);
+      }
       
       // 成功メッセージを表示して遷移
       setShowSuccessMessage(isEditing ? 'ユーザー情報を更新しました' : '新しいユーザーを登録しました');
@@ -183,20 +191,21 @@ const UserEditor: React.FC = () => {
       setTimeout(() => {
         navigate('/admin/users');
       }, 1500);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to save user:', error);
-      setShowSuccessMessage('エラーが発生しました。もう一度お試しください。');
+      setShowSuccessMessage(`エラーが発生しました: ${error.message}`);
       setIsLoading(false);
     }
   };
 
   // ユーザー削除ハンドラ
   const handleDeleteUser = async () => {
+    if (!id) return;
+    
     setIsLoading(true);
     
     try {
-      // APIコールをシミュレート
-      await new Promise(resolve => setTimeout(resolve, 800));
+      await userService.deleteUser(id);
       
       // 削除成功メッセージを表示して遷移
       setShowSuccessMessage('ユーザーを削除しました');
@@ -205,9 +214,9 @@ const UserEditor: React.FC = () => {
       setTimeout(() => {
         navigate('/admin/users');
       }, 1500);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to delete user:', error);
-      setShowSuccessMessage('削除中にエラーが発生しました');
+      setShowSuccessMessage(`削除中にエラーが発生しました: ${error.message}`);
       setIsLoading(false);
       setShowDeleteConfirm(false);
     }
@@ -215,25 +224,26 @@ const UserEditor: React.FC = () => {
 
   // ステータス変更ハンドラ
   const handleToggleStatus = async () => {
+    if (!id) return;
+    
     setIsLoading(true);
     
     try {
-      // APIコールをシミュレート
-      await new Promise(resolve => setTimeout(resolve, 800));
+      const updatedUser = await userService.toggleUserActive(id);
       
       // フォームデータを更新
       setFormData(prev => ({
         ...prev,
-        isActive: !prev.isActive
+        isActive: updatedUser.isActive
       }));
       
       // 成功メッセージを表示
-      setShowSuccessMessage(formData.isActive ? 'ユーザーを無効化しました' : 'ユーザーを有効化しました');
+      setShowSuccessMessage(updatedUser.isActive ? 'ユーザーを有効化しました' : 'ユーザーを無効化しました');
       setShowStatusConfirm(false);
       setIsLoading(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to update user status:', error);
-      setShowSuccessMessage('ステータス変更中にエラーが発生しました');
+      setShowSuccessMessage(`ステータス変更中にエラーが発生しました: ${error.message}`);
       setIsLoading(false);
       setShowStatusConfirm(false);
     }
